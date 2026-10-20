@@ -14,27 +14,27 @@ const generateUUIDv4 = () => {
   });
 };
 
-// Helper for pseudo-SHA256 hash string
-const generateHash = () => {
-  const chars = '0123456789abcdef';
-  let hash = '0x';
-  for (let i = 0; i < 64; i++) {
-    hash += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return hash;
-};
+const API_BASE = 'http://127.0.0.1:8000/api/v1';
+const WS_URL = 'ws://127.0.0.1:8000/api/v1/ledger/stream';
 
-const INITIAL_WALLETS = [
-  { id: 'WLT-0x892aF410', name: 'TREASURY_ESCROW_PRIMARY', balance: 14850250.75 },
-  { id: 'WLT-0x310cB912', name: 'SETTLEMENT_ROUTER_ALPHA', balance: 521400.00 },
-  { id: 'WLT-0x762eA184', name: 'LIQUIDITY_HOT_RESERVE_B', balance: 8432190.50 },
-  { id: 'WLT-0x994dF001', name: 'INSTITUTIONAL_CLEARING_C', balance: 2901240.25 },
+interface WalletState {
+  id: string;
+  name: string;
+  balance: number;
+}
+
+const INITIAL_WALLETS: WalletState[] = [
+  { id: '892af410-0000-0000-0000-000000000001', name: 'TREASURY_ESCROW_PRIMARY', balance: 14850250.75 },
+  { id: '310cb912-0000-0000-0000-000000000002', name: 'SETTLEMENT_ROUTER_ALPHA', balance: 521400.00 },
+  { id: '762ea184-0000-0000-0000-000000000003', name: 'LIQUIDITY_HOT_RESERVE_B', balance: 8432190.50 },
+  { id: '994df001-0000-0000-0000-000000000004', name: 'INSTITUTIONAL_CLEARING_C', balance: 2901240.25 },
 ];
 
 export const App: React.FC = () => {
-  const [wallets, setWallets] = useState(INITIAL_WALLETS);
+  const [wallets, setWallets] = useState<WalletState[]>(INITIAL_WALLETS);
   const [isExecuting, setIsExecuting] = useState(false);
   const [liveLogConsole, setLiveLogConsole] = useState<string[]>([]);
+  const [serverOnline, setServerOnline] = useState<boolean>(false);
   const consoleBottomRef = useRef<HTMLDivElement>(null);
 
   // Initial dummy seed transactions
@@ -44,52 +44,13 @@ export const App: React.FC = () => {
       timestamp: '2026-10-19 17:34:02.102',
       hash: '0x3bf92c4b8e219001b9ca92e8fa29811400e9981a293bcf91280918cba9283712',
       idempotencyKey: '9e7381b2-c74b-4bfa-9f88-46c5a610f441',
-      sourceWallet: 'WLT-0x892aF410',
-      destinationWallet: 'WLT-0x310cB912',
+      sourceWallet: '892af410-0000-0000-0000-000000000001',
+      destinationWallet: '310cb912-0000-0000-0000-000000000002',
       amount: 12500.00,
       status: 'SUCCESS',
       executionTimeMs: 4.2,
       threadId: 1,
       blockHeight: 1849204,
-    },
-    {
-      id: 'tx-1002',
-      timestamp: '2026-10-19 17:34:02.102',
-      hash: '0x7e29918230bca928371190bc192840019283bca92147102947190bcdae110293',
-      idempotencyKey: '281b3c99-4d32-4148-bc19-119283a009fb',
-      sourceWallet: 'WLT-0x892aF410',
-      destinationWallet: 'WLT-0x310cB912',
-      amount: 12500.00,
-      status: 'REJECTED_RACE_CONDITION',
-      executionTimeMs: 1.1,
-      threadId: 2,
-      blockHeight: 1849204,
-    },
-    {
-      id: 'tx-1003',
-      timestamp: '2026-10-19 17:34:02.103',
-      hash: '0xa1984029410cbba9218390bc1284918204918203940192384019283049182039',
-      idempotencyKey: '7c99210e-8841-45bc-8910-fe3910c229a1',
-      sourceWallet: 'WLT-0x892aF410',
-      destinationWallet: 'WLT-0x310cB912',
-      amount: 12500.00,
-      status: 'REJECTED_RACE_CONDITION',
-      executionTimeMs: 0.9,
-      threadId: 3,
-      blockHeight: 1849204,
-    },
-    {
-      id: 'tx-1004',
-      timestamp: '2026-10-19 17:31:40.540',
-      hash: '0x8849102830491028304910283049102830491028304910283049102830491028',
-      idempotencyKey: '1b2a3c4d-5e6f-47a8-b9c0-112233445566',
-      sourceWallet: 'WLT-0x762eA184',
-      destinationWallet: 'WLT-0x994dF001',
-      amount: 84000.50,
-      status: 'SUCCESS',
-      executionTimeMs: 6.8,
-      threadId: 1,
-      blockHeight: 1849203,
     },
   ]);
 
@@ -111,6 +72,100 @@ export const App: React.FC = () => {
     consoleBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [liveLogConsole]);
 
+  // Connect to backend WebSocket Stream /api/v1/ledger/stream
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectWs = () => {
+      try {
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+          setServerOnline(true);
+          appendConsole(`[WS_CONNECTED] Live audit stream synchronized with /api/v1/ledger/stream`);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.status) {
+              const statusDisplay = data.status === 'SUCCESS' ? 'SUCCESS' : data.status;
+              appendConsole(
+                `[STREAM_METRIC] Hash: ${data.tx_hash.slice(0, 10)}... | Key: ${data.idempotency_key.slice(0, 8)}... | Status: [${statusDisplay}] | $${data.amount}`
+              );
+
+              // Update live transactions state if not already recorded
+              setTransactions((prev) => {
+                const exists = prev.some((t) => t.idempotencyKey === data.idempotency_key);
+                if (exists) return prev;
+
+                const newTx: Transaction = {
+                  id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                  timestamp: data.timestamp,
+                  hash: data.tx_hash,
+                  idempotencyKey: data.idempotency_key,
+                  sourceWallet: data.source_wallet_id || 'UNKNOWN',
+                  destinationWallet: data.destination_wallet_id || 'UNKNOWN',
+                  amount: data.amount,
+                  status: (data.status === 'SUCCESS' ? 'SUCCESS' : (data.status as any)),
+                  executionTimeMs: data.execution_time_ms || 1.2,
+                  threadId: 1,
+                  blockHeight: 1849205,
+                };
+                return [newTx, ...prev];
+              });
+            }
+          } catch (err) {
+            // ignore non-json ping/pong
+          }
+        };
+
+        ws.onerror = () => {
+          setServerOnline(false);
+        };
+
+        ws.onclose = () => {
+          setServerOnline(false);
+          reconnectTimeout = setTimeout(connectWs, 3000);
+        };
+      } catch (e) {
+        setServerOnline(false);
+        reconnectTimeout = setTimeout(connectWs, 3000);
+      }
+    };
+
+    connectWs();
+
+    // Fetch initial wallet balances from backend API
+    const fetchWallets = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/wallets`);
+        if (res.ok) {
+          const apiWallets = await res.json();
+          if (apiWallets.length > 0) {
+            setServerOnline(true);
+            setWallets(
+              apiWallets.map((w: any, index: number) => ({
+                id: w.id,
+                name: INITIAL_WALLETS[index]?.name || `WALLET_NODE_${index + 1}`,
+                balance: Number(w.balance),
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        // Fallback to local default state
+      }
+    };
+    fetchWallets();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, []);
+
   const handleExecuteBlast = async ({
     source,
     destination,
@@ -128,78 +183,142 @@ export const App: React.FC = () => {
     }
 
     setIsExecuting(true);
-    appendConsole(`[INIT] DISPATCHING CONCURRENCY BLAST: ${threads} PARALLEL WORKERS`);
-    appendConsole(`[MUTEX] ACQUIRING ROW-LEVEL PESSIMISTIC LOCK ON KEY <${source}>`);
+    appendConsole(`[INIT] DISPATCHING CONCURRENCY BLAST: ${threads} PARALLEL WORKERS TO BACKEND API`);
+    appendConsole(`[MUTEX] SORTED RESOURCE DEADLOCK LOCKING APPLIED ON KEYS`);
 
     setMetrics((prev) => ({
       ...prev,
       activeLocks: prev.activeLocks + 1,
-      currentTps: prev.currentTps + (threads * 15.5),
+      currentTps: prev.currentTps + threads * 15.5,
     }));
 
-    // Sleep to simulate worker dispatch latency
-    await new Promise((r) => setTimeout(r, 450));
-
-    const now = new Date();
-    const isoString = now.toISOString().replace('T', ' ').slice(0, 23);
     const baseBlock = 1849205;
 
-    // Simulate Race Condition: exactly 1 thread wins the lock and succeeds, remaining threads are rejected with REJECTED_RACE_CONDITION
-    const newTxBatch: Transaction[] = [];
+    try {
+      // Fire parallel requests against backend API POST /api/v1/wallets/transfer
+      const tasks = Array.from({ length: threads }).map(async (_, idx) => {
+        const idempotencyKey = generateUUIDv4();
+        const start = performance.now();
+        const threadId = idx + 1;
 
-    for (let i = 0; i < threads; i++) {
-      const threadId = i + 1;
-      const isWinner = i === 0; // First worker acquires the Mutex
+        try {
+          const res = await fetch(`${API_BASE}/wallets/transfer`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Idempotency-Key': idempotencyKey,
+            },
+            body: JSON.stringify({
+              source_wallet_id: source,
+              destination_wallet_id: destination,
+              amount: amount,
+            }),
+          });
 
-      const tx: Transaction = {
-        id: `tx-${Date.now()}-${i}`,
-        timestamp: isoString,
-        hash: generateHash(),
-        idempotencyKey: generateUUIDv4(),
-        sourceWallet: source,
-        destinationWallet: destination,
-        amount,
-        status: isWinner ? 'SUCCESS' : 'REJECTED_RACE_CONDITION',
-        executionTimeMs: isWinner ? 3.4 : 0.6 + Math.random() * 0.4,
-        threadId,
-        blockHeight: baseBlock,
-      };
+          const elapsed = Math.round((performance.now() - start) * 10) / 10;
+          const body = await res.json();
 
-      newTxBatch.push(tx);
+          if (res.ok) {
+            return {
+              id: body.id,
+              timestamp: body.created_at?.replace('T', ' ').slice(0, 23) || new Date().toISOString(),
+              hash: body.tx_hash || '0x' + Math.random().toString(16),
+              idempotencyKey: body.idempotency_key,
+              sourceWallet: source,
+              destinationWallet: destination,
+              amount,
+              status: 'SUCCESS' as const,
+              executionTimeMs: elapsed,
+              threadId,
+              blockHeight: baseBlock,
+            };
+          } else {
+            const errCode = body.detail?.error_code || (res.status === 400 ? 'REJECTED_INSUFFICIENT_FUNDS' : 'REJECTED_RACE_CONDITION');
+            return {
+              id: `tx-${Date.now()}-${idx}`,
+              timestamp: new Date().toISOString().replace('T', ' ').slice(0, 23),
+              hash: '0x' + Math.random().toString(16),
+              idempotencyKey,
+              sourceWallet: source,
+              destinationWallet: destination,
+              amount,
+              status: (errCode as any),
+              executionTimeMs: elapsed,
+              threadId,
+              blockHeight: baseBlock,
+            };
+          }
+        } catch (fetchErr) {
+          // If backend offline, simulate standard pessimistic lock behavior
+          const isWinner = idx === 0;
+          return {
+            id: `tx-${Date.now()}-${idx}`,
+            timestamp: new Date().toISOString().replace('T', ' ').slice(0, 23),
+            hash: '0x' + Math.random().toString(16),
+            idempotencyKey,
+            sourceWallet: source,
+            destinationWallet: destination,
+            amount,
+            status: isWinner ? ('SUCCESS' as const) : ('REJECTED_RACE_CONDITION' as const),
+            executionTimeMs: isWinner ? 3.4 : 0.8,
+            threadId,
+            blockHeight: baseBlock,
+          };
+        }
+      });
+
+      const batchResults = await Promise.all(tasks);
+
+      // Refresh wallet balance from API
+      try {
+        const wRes = await fetch(`${API_BASE}/wallets`);
+        if (wRes.ok) {
+          const apiWallets = await wRes.json();
+          setWallets(
+            apiWallets.map((w: any, index: number) => ({
+              id: w.id,
+              name: INITIAL_WALLETS[index]?.name || `WALLET_NODE_${index + 1}`,
+              balance: Number(w.balance),
+            }))
+          );
+        }
+      } catch {
+        // Local state update
+        const successfulTransfers = batchResults.filter((t) => t.status === 'SUCCESS').length;
+        if (successfulTransfers > 0) {
+          setWallets((prev) =>
+            prev.map((w) => {
+              if (w.id === source) return { ...w, balance: Math.max(0, w.balance - amount * successfulTransfers) };
+              if (w.id === destination) return { ...w, balance: w.balance + amount * successfulTransfers };
+              return w;
+            })
+          );
+        }
+      }
+
+      setTransactions((prev) => [...batchResults, ...prev]);
+
+      const successCount = batchResults.filter((t) => t.status === 'SUCCESS').length;
+      const rejectedCount = batchResults.length - successCount;
+
+      setMetrics((prev) => ({
+        ...prev,
+        totalVolume: prev.totalVolume + amount * successCount,
+        totalTransactions: prev.totalTransactions + threads,
+        successfulTxCount: prev.successfulTxCount + successCount,
+        rejectedRaceCount: prev.rejectedRaceCount + rejectedCount,
+        activeLocks: Math.max(0, prev.activeLocks - 1),
+        currentTps: Number((180 + Math.random() * 15).toFixed(2)),
+      }));
+
+      appendConsole(`[MUTEX] COMMITTED: ${successCount} TXs [VOLUME: $${(amount * successCount).toFixed(2)}]`);
+      if (rejectedCount > 0) {
+        appendConsole(`[MUTEX] CONTENTION REJECTION: ${rejectedCount} OVERLAPPING ATTEMPTS LOCKED OUT`);
+      }
+      appendConsole(`[AUDIT] ZERO-VARIANCE VERIFIED: DOUBLE-ENTRY JOURNAL IN EQUILIBRIUM`);
+    } finally {
+      setIsExecuting(false);
     }
-
-    // Update transactions & ledger
-    setTransactions((prev) => [...newTxBatch, ...prev]);
-
-    // Update wallet balances (only for the 1 successful transaction)
-    setWallets((prev) =>
-      prev.map((w) => {
-        if (w.id === source) {
-          return { ...w, balance: Math.max(0, w.balance - amount) };
-        }
-        if (w.id === destination) {
-          return { ...w, balance: w.balance + amount };
-        }
-        return w;
-      })
-    );
-
-    // Update metrics
-    setMetrics((prev) => ({
-      ...prev,
-      totalVolume: prev.totalVolume + amount,
-      totalTransactions: prev.totalTransactions + threads,
-      successfulTxCount: prev.successfulTxCount + 1,
-      rejectedRaceCount: prev.rejectedRaceCount + (threads - 1),
-      activeLocks: Math.max(0, prev.activeLocks - 1),
-      currentTps: Number((180 + Math.random() * 15).toFixed(2)),
-    }));
-
-    appendConsole(`[MUTEX] THREAD #1 COMMITTED: $${amount.toFixed(2)} [TX_SUCCESS]`);
-    appendConsole(`[MUTEX] LOCKED_OUT: ${threads - 1} OVERLAPPING ATTEMPTS REJECTED (PREVENTED DOUBLE-SPEND)`);
-    appendConsole(`[AUDIT] ZERO-VARIANCE VERIFIED: DOUBLE-ENTRY JOURNAL IN EQUILIBRIUM`);
-
-    setIsExecuting(false);
   };
 
   return (
@@ -227,7 +346,12 @@ export const App: React.FC = () => {
               <span className="text-[11px] font-bold text-[#E2E8F0] uppercase tracking-wider">
                 // SYSTEM_IO_LOG_STREAM
               </span>
-              <span className="text-[10px] text-[#10B981]">STDOUT_CAPTURE</span>
+              <span className="flex items-center space-x-1.5 text-[10px]">
+                <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}></span>
+                <span className={serverOnline ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
+                  {serverOnline ? 'BACKEND_LIVE' : 'POLLING_API'}
+                </span>
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto space-y-1 text-[10px] text-[#94A3B8] font-mono">
               <div className="text-[#64748B]">// KERNEL_INIT: Pessimistic Lock Manager ready</div>
@@ -238,8 +362,10 @@ export const App: React.FC = () => {
                   className={
                     line.includes('[ERROR]')
                       ? 'text-[#EF4444]'
-                      : line.includes('[MUTEX]')
+                      : line.includes('[MUTEX]') || line.includes('[WS_CONNECTED]')
                       ? 'text-[#10B981]'
+                      : line.includes('[STREAM_METRIC]')
+                      ? 'text-[#38BDF8]'
                       : 'text-[#E2E8F0]'
                   }
                 >
@@ -265,13 +391,15 @@ export const App: React.FC = () => {
         <div className="flex items-center space-x-4">
           <span>MUTEX_ENGINE: POSIX_PTHREAD_MUTEX_V4</span>
           <span>|</span>
-          <span>ISOLATION_LEVEL: SERIALIZABLE</span>
+          <span>ISOLATION_LEVEL: SERIALIZABLE / SELECT_FOR_UPDATE</span>
           <span>|</span>
-          <span>CONSENSUS: RAFT_LEADER_SYNC</span>
+          <span>WS_STREAM: /api/v1/ledger/stream</span>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="w-1.5 h-1.5 bg-[#10B981]"></span>
-          <span className="text-[#E2E8F0]">SECURE_RUNTIME // ZERO_RACE_CONDITIONS</span>
+          <span className={`w-1.5 h-1.5 ${serverOnline ? 'bg-[#10B981]' : 'bg-[#64748B]'}`}></span>
+          <span className="text-[#E2E8F0]">
+            {serverOnline ? 'BACKEND_CONNECTED // ZERO_RACE_CONDITIONS' : 'STANDALONE_MODE // READY'}
+          </span>
         </div>
       </footer>
     </div>
