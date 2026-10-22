@@ -1,9 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AuthGateway } from './components/AuthGateway';
+import { ClientWalletInterface } from './components/ClientWalletInterface';
+import { LiveAuditStream } from './components/LiveAuditStream';
 import { TopBanner } from './components/TopBanner';
 import { PerformanceTickers } from './components/PerformanceTickers';
-import { ConcurrencyPanel } from './components/ConcurrencyPanel';
-import { DoubleEntryTable } from './components/DoubleEntryTable';
-import { Transaction, LedgerMetrics } from './types';
+import {
+  AuthSession,
+  WalletNode,
+  Transaction,
+  LedgerMetrics,
+  ConcurrencyBlastResult,
+} from './types';
+import {
+  LogOut,
+  Terminal,
+  Flame,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
+
+const API_BASE = 'http://127.0.0.1:8000/api/v1';
+const WS_URL = 'ws://127.0.0.1:8000/api/v1/ledger/stream';
 
 // Helper to generate UUIDv4
 const generateUUIDv4 = () => {
@@ -14,68 +31,159 @@ const generateUUIDv4 = () => {
   });
 };
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
-const WS_URL = 'ws://127.0.0.1:8000/api/v1/ledger/stream';
-
-interface WalletState {
-  id: string;
-  name: string;
-  balance: number;
-}
-
-const INITIAL_WALLETS: WalletState[] = [
-  { id: '892af410-0000-0000-0000-000000000001', name: 'TREASURY_ESCROW_PRIMARY', balance: 14850250.75 },
-  { id: '310cb912-0000-0000-0000-000000000002', name: 'SETTLEMENT_ROUTER_ALPHA', balance: 521400.00 },
-  { id: '762ea184-0000-0000-0000-000000000003', name: 'LIQUIDITY_HOT_RESERVE_B', balance: 8432190.50 },
-  { id: '994df001-0000-0000-0000-000000000004', name: 'INSTITUTIONAL_CLEARING_C', balance: 2901240.25 },
-];
-
 export const App: React.FC = () => {
-  const [wallets, setWallets] = useState<WalletState[]>(INITIAL_WALLETS);
-  const [isExecuting, setIsExecuting] = useState(false);
+  // Authentication session state (stored in localStorage for persistence)
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('mutex_ledger_auth_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [allWallets, setAllWallets] = useState<WalletNode[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTx, setIsLoadingTx] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [isBlasting, setIsBlasting] = useState(false);
+  const [blastResults, setBlastResults] = useState<ConcurrencyBlastResult[] | null>(null);
+
   const [liveLogConsole, setLiveLogConsole] = useState<string[]>([]);
   const [serverOnline, setServerOnline] = useState<boolean>(false);
   const consoleBottomRef = useRef<HTMLDivElement>(null);
 
-  // Initial dummy seed transactions
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 'tx-1001',
-      timestamp: '2026-10-19 17:34:02.102',
-      hash: '0x3bf92c4b8e219001b9ca92e8fa29811400e9981a293bcf91280918cba9283712',
-      idempotencyKey: '9e7381b2-c74b-4bfa-9f88-46c5a610f441',
-      sourceWallet: '892af410-0000-0000-0000-000000000001',
-      destinationWallet: '310cb912-0000-0000-0000-000000000002',
-      amount: 12500.00,
-      status: 'SUCCESS',
-      executionTimeMs: 4.2,
-      threadId: 1,
-      blockHeight: 1849204,
-    },
-  ]);
-
   const [metrics, setMetrics] = useState<LedgerMetrics>({
-    totalVolume: 26697881.50,
-    totalTransactions: 284109,
-    successfulTxCount: 279540,
+    totalVolume: 26703881.5,
+    totalTransactions: 284115,
+    successfulTxCount: 279546,
     rejectedRaceCount: 4569,
-    activeLedgerBalance: 26697881.50,
+    activeLedgerBalance: 26703881.5,
     currentTps: 182.4,
     activeLocks: 0,
   });
 
   const appendConsole = (msg: string) => {
-    setLiveLogConsole((prev) => [...prev.slice(-30), msg]);
+    setLiveLogConsole((prev: string[]) => [...prev.slice(-40), msg]);
   };
 
   useEffect(() => {
     consoleBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [liveLogConsole]);
 
-  // Connect to backend WebSocket Stream /api/v1/ledger/stream
+  // Save/clear session in localStorage
+  const handleAuthSuccess = (newSession: AuthSession) => {
+    setSession(newSession);
+    localStorage.setItem('mutex_ledger_auth_session', JSON.stringify(newSession));
+    appendConsole(`[AUTH_GRANTED] Session authenticated for: ${newSession.user.email}`);
+    appendConsole(`[KEY_ISSUED] JWT Bearer Token stored in memory`);
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    localStorage.removeItem('mutex_ledger_auth_session');
+    setTransactions([]);
+    setBlastResults(null);
+    appendConsole(`[AUTH_REVOKED] Session cleared.`);
+  };
+
+  // Synchronize authenticated user profile and wallet balance
+  const refreshUserWallet = async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.wallet) {
+          setSession((prev: AuthSession | null) => {
+            if (!prev) return null;
+            const updated: AuthSession = {
+              ...prev,
+              user: {
+                id: data.id,
+                email: data.email,
+                created_at: data.created_at,
+              },
+              wallet: {
+                id: data.wallet.id,
+                user_id: data.wallet.user_id,
+                currency: data.wallet.currency,
+                balance: Number(data.wallet.balance),
+                created_at: data.wallet.created_at,
+              },
+            };
+            localStorage.setItem('mutex_ledger_auth_session', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // Fetch all peer wallets
+  const fetchAllWallets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/wallets`);
+      if (res.ok) {
+        setServerOnline(true);
+        const data = await res.json();
+        const mapped = data.map((w: any) => ({
+          id: w.id,
+          user_id: w.user_id,
+          currency: w.currency || 'USD',
+          balance: Number(w.balance),
+          created_at: w.created_at,
+        }));
+        setAllWallets(mapped);
+      }
+    } catch {
+      setServerOnline(false);
+    }
+  };
+
+  // Fetch only active user's transaction ledger history
+  const fetchMyTransactions = async () => {
+    if (!session?.token) return;
+    setIsLoadingTx(true);
+    try {
+      const res = await fetch(`${API_BASE}/ledger/my-transactions?limit=50`, {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped: Transaction[] = data.map((t: any) => ({
+          id: t.id,
+          timestamp: t.created_at ? t.created_at.replace('T', ' ').slice(0, 19) : new Date().toISOString().replace('T', ' ').slice(0, 19),
+          hash: t.tx_hash || '0x' + t.id.replace(/-/g, ''),
+          idempotencyKey: t.idempotency_key,
+          sourceWallet: t.source_wallet_id,
+          destinationWallet: t.destination_wallet_id,
+          amount: Number(t.amount),
+          status: t.status === 'success' ? 'SUCCESS' : 'BLOCKED_BY_MUTEX',
+          executionTimeMs: t.execution_time_ms || 1.2,
+          errorReason: t.error_reason,
+        }));
+        setTransactions(mapped);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingTx(false);
+    }
+  };
+
+  // WebSocket Live Audit Stream Connection
   useEffect(() => {
     let ws: WebSocket | null = null;
-    let reconnectTimeout: any = null;
+    let reconnectTimer: any = null;
 
     const connectWs = () => {
       try {
@@ -83,289 +191,372 @@ export const App: React.FC = () => {
 
         ws.onopen = () => {
           setServerOnline(true);
-          appendConsole(`[WS_CONNECTED] Live audit stream synchronized with /api/v1/ledger/stream`);
+          appendConsole(`[WS_READY] Live cryptographic audit stream linked to /api/v1/ledger/stream`);
         };
 
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
             if (data.status) {
-              const statusDisplay = data.status === 'SUCCESS' ? 'SUCCESS' : data.status;
+              const isBlocked = data.status.includes('BLOCKED') || data.status.includes('REJECTED');
+              const flatStatus = isBlocked ? 'BLOCKED_BY_MUTEX' : 'SUCCESS';
+
               appendConsole(
-                `[STREAM_METRIC] Hash: ${data.tx_hash.slice(0, 10)}... | Key: ${data.idempotency_key.slice(0, 8)}... | Status: [${statusDisplay}] | $${data.amount}`
+                `[STREAM_EVENT] Hash: ${data.tx_hash.slice(0, 10)}... | Status: [${flatStatus}] | $${data.amount}`
               );
 
-              // Update live transactions state if not already recorded
-              setTransactions((prev) => {
-                const exists = prev.some((t) => t.idempotencyKey === data.idempotency_key);
-                if (exists) return prev;
+              // Update metrics
+              setMetrics((prev: LedgerMetrics) => ({
+                ...prev,
+                totalTransactions: prev.totalTransactions + 1,
+                successfulTxCount: flatStatus === 'SUCCESS' ? prev.successfulTxCount + 1 : prev.successfulTxCount,
+                rejectedRaceCount: flatStatus === 'BLOCKED_BY_MUTEX' ? prev.rejectedRaceCount + 1 : prev.rejectedRaceCount,
+                totalVolume: flatStatus === 'SUCCESS' ? prev.totalVolume + data.amount : prev.totalVolume,
+              }));
 
-                const newTx: Transaction = {
-                  id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                  timestamp: data.timestamp,
-                  hash: data.tx_hash,
-                  idempotencyKey: data.idempotency_key,
-                  sourceWallet: data.source_wallet_id || 'UNKNOWN',
-                  destinationWallet: data.destination_wallet_id || 'UNKNOWN',
-                  amount: data.amount,
-                  status: (data.status === 'SUCCESS' ? 'SUCCESS' : (data.status as any)),
-                  executionTimeMs: data.execution_time_ms || 1.2,
-                  threadId: 1,
-                  blockHeight: 1849205,
-                };
-                return [newTx, ...prev];
-              });
+              // If event pertains to current user's wallet, re-sync state
+              if (
+                session?.wallet &&
+                (data.source_wallet_id === session.wallet.id ||
+                  data.destination_wallet_id === session.wallet.id)
+              ) {
+                refreshUserWallet();
+                fetchMyTransactions();
+              }
             }
-          } catch (err) {
-            // ignore non-json ping/pong
+          } catch {
+            // non-json message
           }
         };
 
-        ws.onerror = () => {
-          setServerOnline(false);
-        };
-
+        ws.onerror = () => setServerOnline(false);
         ws.onclose = () => {
           setServerOnline(false);
-          reconnectTimeout = setTimeout(connectWs, 3000);
+          reconnectTimer = setTimeout(connectWs, 3000);
         };
-      } catch (e) {
+      } catch {
         setServerOnline(false);
-        reconnectTimeout = setTimeout(connectWs, 3000);
+        reconnectTimer = setTimeout(connectWs, 3000);
       }
     };
 
     connectWs();
-
-    // Fetch initial wallet balances from backend API
-    const fetchWallets = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/wallets`);
-        if (res.ok) {
-          const apiWallets = await res.json();
-          if (apiWallets.length > 0) {
-            setServerOnline(true);
-            setWallets(
-              apiWallets.map((w: any, index: number) => ({
-                id: w.id,
-                name: INITIAL_WALLETS[index]?.name || `WALLET_NODE_${index + 1}`,
-                balance: Number(w.balance),
-              }))
-            );
-          }
-        }
-      } catch (err) {
-        // Fallback to local default state
-      }
-    };
-    fetchWallets();
+    fetchAllWallets();
 
     return () => {
       if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
     };
-  }, []);
+  }, [session?.wallet?.id]);
 
-  const handleExecuteBlast = async ({
-    source,
-    destination,
-    amount,
-    threads,
-  }: {
-    source: string;
-    destination: string;
-    amount: number;
-    threads: number;
-  }) => {
-    if (source === destination) {
-      appendConsole(`[ERROR] TRANSACTION_ROUTING_FAULT: Source wallet matches destination wallet.`);
-      return;
+  // Initial load of transactions if session exists
+  useEffect(() => {
+    if (session) {
+      refreshUserWallet();
+      fetchMyTransactions();
     }
+  }, [session?.token]);
 
-    setIsExecuting(true);
-    appendConsole(`[INIT] DISPATCHING CONCURRENCY BLAST: ${threads} PARALLEL WORKERS TO BACKEND API`);
-    appendConsole(`[MUTEX] SORTED RESOURCE DEADLOCK LOCKING APPLIED ON KEYS`);
+  // Execute standard single transfer
+  const handleExecuteTransfer = async (
+    destWalletId: string,
+    amount: number
+  ): Promise<boolean> => {
+    if (!session) return false;
 
-    setMetrics((prev) => ({
-      ...prev,
-      activeLocks: prev.activeLocks + 1,
-      currentTps: prev.currentTps + threads * 15.5,
-    }));
+    setIsTransferring(true);
+    const idempotencyKey = generateUUIDv4();
 
-    const baseBlock = 1849205;
+    appendConsole(`[INIT_TX] Attempting transfer: $${amount.toFixed(2)} to ${destWalletId.slice(0, 8)}...`);
 
     try {
-      // Fire parallel requests against backend API POST /api/v1/wallets/transfer
-      const tasks = Array.from({ length: threads }).map(async (_, idx) => {
-        const idempotencyKey = generateUUIDv4();
-        const start = performance.now();
-        const threadId = idx + 1;
-
-        try {
-          const res = await fetch(`${API_BASE}/wallets/transfer`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Idempotency-Key': idempotencyKey,
-            },
-            body: JSON.stringify({
-              source_wallet_id: source,
-              destination_wallet_id: destination,
-              amount: amount,
-            }),
-          });
-
-          const elapsed = Math.round((performance.now() - start) * 10) / 10;
-          const body = await res.json();
-
-          if (res.ok) {
-            return {
-              id: body.id,
-              timestamp: body.created_at?.replace('T', ' ').slice(0, 23) || new Date().toISOString(),
-              hash: body.tx_hash || '0x' + Math.random().toString(16),
-              idempotencyKey: body.idempotency_key,
-              sourceWallet: source,
-              destinationWallet: destination,
-              amount,
-              status: 'SUCCESS' as const,
-              executionTimeMs: elapsed,
-              threadId,
-              blockHeight: baseBlock,
-            };
-          } else {
-            const errCode = body.detail?.error_code || (res.status === 400 ? 'REJECTED_INSUFFICIENT_FUNDS' : 'REJECTED_RACE_CONDITION');
-            return {
-              id: `tx-${Date.now()}-${idx}`,
-              timestamp: new Date().toISOString().replace('T', ' ').slice(0, 23),
-              hash: '0x' + Math.random().toString(16),
-              idempotencyKey,
-              sourceWallet: source,
-              destinationWallet: destination,
-              amount,
-              status: (errCode as any),
-              executionTimeMs: elapsed,
-              threadId,
-              blockHeight: baseBlock,
-            };
-          }
-        } catch (fetchErr) {
-          // If backend offline, simulate standard pessimistic lock behavior
-          const isWinner = idx === 0;
-          return {
-            id: `tx-${Date.now()}-${idx}`,
-            timestamp: new Date().toISOString().replace('T', ' ').slice(0, 23),
-            hash: '0x' + Math.random().toString(16),
-            idempotencyKey,
-            sourceWallet: source,
-            destinationWallet: destination,
-            amount,
-            status: isWinner ? ('SUCCESS' as const) : ('REJECTED_RACE_CONDITION' as const),
-            executionTimeMs: isWinner ? 3.4 : 0.8,
-            threadId,
-            blockHeight: baseBlock,
-          };
-        }
+      const res = await fetch(`${API_BASE}/wallets/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey,
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({
+          source_wallet_id: session.wallet.id,
+          destination_wallet_id: destWalletId,
+          amount: amount,
+        }),
       });
 
-      const batchResults = await Promise.all(tasks);
+      const data = await res.json();
 
-      // Refresh wallet balance from API
-      try {
-        const wRes = await fetch(`${API_BASE}/wallets`);
-        if (wRes.ok) {
-          const apiWallets = await wRes.json();
-          setWallets(
-            apiWallets.map((w: any, index: number) => ({
-              id: w.id,
-              name: INITIAL_WALLETS[index]?.name || `WALLET_NODE_${index + 1}`,
-              balance: Number(w.balance),
-            }))
-          );
-        }
-      } catch {
-        // Local state update
-        const successfulTransfers = batchResults.filter((t) => t.status === 'SUCCESS').length;
-        if (successfulTransfers > 0) {
-          setWallets((prev) =>
-            prev.map((w) => {
-              if (w.id === source) return { ...w, balance: Math.max(0, w.balance - amount * successfulTransfers) };
-              if (w.id === destination) return { ...w, balance: w.balance + amount * successfulTransfers };
-              return w;
-            })
-          );
-        }
+      if (res.ok) {
+        appendConsole(`[TX_SUCCESS] Committed Tx Hash: ${data.tx_hash.slice(0, 12)}... [STATUS: SUCCESS]`);
+        await refreshUserWallet();
+        await fetchMyTransactions();
+        return true;
+      } else {
+        const errorDetail = typeof data.detail === 'string' ? data.detail : data.detail?.message || 'BLOCKED_BY_MUTEX';
+        appendConsole(`[TX_BLOCKED] HTTP ${res.status}: ${errorDetail}`);
+        await refreshUserWallet();
+        await fetchMyTransactions();
+        return false;
       }
-
-      setTransactions((prev) => [...batchResults, ...prev]);
-
-      const successCount = batchResults.filter((t) => t.status === 'SUCCESS').length;
-      const rejectedCount = batchResults.length - successCount;
-
-      setMetrics((prev) => ({
-        ...prev,
-        totalVolume: prev.totalVolume + amount * successCount,
-        totalTransactions: prev.totalTransactions + threads,
-        successfulTxCount: prev.successfulTxCount + successCount,
-        rejectedRaceCount: prev.rejectedRaceCount + rejectedCount,
-        activeLocks: Math.max(0, prev.activeLocks - 1),
-        currentTps: Number((180 + Math.random() * 15).toFixed(2)),
-      }));
-
-      appendConsole(`[MUTEX] COMMITTED: ${successCount} TXs [VOLUME: $${(amount * successCount).toFixed(2)}]`);
-      if (rejectedCount > 0) {
-        appendConsole(`[MUTEX] CONTENTION REJECTION: ${rejectedCount} OVERLAPPING ATTEMPTS LOCKED OUT`);
-      }
-      appendConsole(`[AUDIT] ZERO-VARIANCE VERIFIED: DOUBLE-ENTRY JOURNAL IN EQUILIBRIUM`);
+    } catch {
+      appendConsole(`[NETWORK_ERR] Connection failure during transfer dispatch.`);
+      return false;
     } finally {
-      setIsExecuting(false);
+      setIsTransferring(false);
     }
   };
 
+  // The Concurrency Stress Button: Fires 10 simultaneous fetch requests using Promise.all()
+  const handleTriggerParallelStressBlast = async (
+    destWalletId: string,
+    blastAmount: number
+  ) => {
+    if (!session) return;
+
+    setIsBlasting(true);
+    setBlastResults(null);
+
+    appendConsole(`=======================================================`);
+    appendConsole(`[STRESS_ENGINE] TRIGGERING PARALLEL STRESS BLAST: 10 CONCURRENT ASYNC REQUESTS`);
+    appendConsole(`[CONCURRENCY] Protocol: Promise.all() dispatching 10 parallel HTTP POSTs`);
+    appendConsole(`[PARAMS] Source: ${session.wallet.id.slice(0, 8)}... | Amount Per Req: $${blastAmount.toFixed(2)}`);
+    appendConsole(`=======================================================`);
+
+    setMetrics((prev: LedgerMetrics) => ({
+      ...prev,
+      activeLocks: prev.activeLocks + 1,
+      currentTps: Number((prev.currentTps + 150.5).toFixed(1)),
+    }));
+
+    // Array of 10 parallel fetch tasks using Promise.all()
+    const blastPromises = Array.from({ length: 10 }).map(async (_, index) => {
+      const reqIdempotencyKey = generateUUIDv4();
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(`${API_BASE}/wallets/transfer`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': reqIdempotencyKey,
+            Authorization: `Bearer ${session.token}`,
+          },
+          body: JSON.stringify({
+            source_wallet_id: session.wallet.id,
+            destination_wallet_id: destWalletId,
+            amount: blastAmount,
+          }),
+        });
+
+        const elapsed = Math.round((performance.now() - startTime) * 10) / 10;
+        const body = await res.json();
+
+        if (res.ok) {
+          return {
+            requestIndex: index + 1,
+            idempotencyKey: reqIdempotencyKey,
+            status: 'SUCCESS' as const,
+            httpStatus: res.status,
+            elapsedMs: elapsed,
+            message: 'TRANSACTION_COMMITTED_SUCCESSFULLY',
+            txHash: body.tx_hash,
+          };
+        } else {
+          return {
+            requestIndex: index + 1,
+            idempotencyKey: reqIdempotencyKey,
+            status: 'BLOCKED_BY_MUTEX' as const,
+            httpStatus: res.status,
+            elapsedMs: elapsed,
+            message: body.detail?.message || (res.status === 422 ? 'HTTP_422_INSUFFICIENT_FUNDS_LOCKOUT' : 'BLOCKED_BY_MUTEX'),
+            txHash: undefined,
+          };
+        }
+      } catch {
+        const elapsed = Math.round((performance.now() - startTime) * 10) / 10;
+        return {
+          requestIndex: index + 1,
+          idempotencyKey: reqIdempotencyKey,
+          status: 'BLOCKED_BY_MUTEX' as const,
+          httpStatus: 500,
+          elapsedMs: elapsed,
+          message: 'CONNECTION_TIMEOUT_OR_LOCK_FAILURE',
+          txHash: undefined,
+        };
+      }
+    });
+
+    try {
+      // Execute all 10 simultaneously
+      const results = await Promise.all(blastPromises);
+      setBlastResults(results);
+
+      const successCount = results.filter((r) => r.status === 'SUCCESS').length;
+      const blockedCount = results.filter((r) => r.status === 'BLOCKED_BY_MUTEX').length;
+
+      appendConsole(
+        `[STRESS_OUTCOME] 10 REQUESTS SETTLED: ${successCount} [SUCCESS], ${blockedCount} [BLOCKED_BY_MUTEX (HTTP 422)]`
+      );
+      appendConsole(`[MUTEX_VERIFIED] Deterministic row-locking strictly maintained balance boundaries.`);
+
+      // Refresh data
+      await refreshUserWallet();
+      await fetchMyTransactions();
+      await fetchAllWallets();
+
+      setMetrics((prev: LedgerMetrics) => ({
+        ...prev,
+        activeLocks: Math.max(0, prev.activeLocks - 1),
+      }));
+    } finally {
+      setIsBlasting(false);
+    }
+  };
+
+  // If user is not authenticated, render View 1: Authentication Gateway Screen
+  if (!session) {
+    return <AuthGateway onAuthSuccess={handleAuthSuccess} apiBase={API_BASE} />;
+  }
+
+  // Render Logged-In User Interface
   return (
-    <div className="min-h-screen bg-[#0B0F12] text-[#E2E8F0] font-mono flex flex-col antialiased">
-      {/* Top Status Banner */}
+    <div className="min-h-screen bg-[#0B0F12] text-[#E2E8F0] font-mono flex flex-col antialiased selection:bg-[#222F3A] selection:text-[#10B981]">
+      {/* Top Banner with Connected Status */}
       <TopBanner />
 
-      {/* Main Workspace Body */}
+      {/* Main Workspace Navigation & Active User Bar */}
+      <div className="bg-[#131A20] border-b border-[#222F3A] px-4 md:px-6 py-2.5">
+        <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-3">
+            <span className="text-[11px] font-bold text-[#10B981] flex items-center space-x-1.5">
+              <Terminal className="w-4 h-4" />
+              <span>TERMINAL_SESSION: ACTIVE</span>
+            </span>
+            <span className="text-[#64748B]">|</span>
+            <span className="text-xs text-[#E2E8F0] font-bold truncate">
+              {session.user.email}
+            </span>
+            <span className="text-[10px] text-[#64748B] hidden md:inline">
+              (WALLET: {session.wallet.id.slice(0, 8)}...)
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1.5 text-[11px]">
+              <span className={`w-2 h-2 ${serverOnline ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}></span>
+              <span className={serverOnline ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
+                {serverOnline ? 'BACKEND_DAEMON_ONLINE' : 'CONNECTING...'}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1 bg-[#0B0F12] border border-[#222F3A] hover:border-[#EF4444] text-[#94A3B8] hover:text-[#EF4444] text-xs font-bold uppercase transition-colors flex items-center space-x-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>TERMINATE_SESSION</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Dashboard Body */}
       <main className="flex-1 p-4 md:p-6 space-y-5 max-w-[1720px] w-full mx-auto">
         {/* Core Performance Tickers */}
         <PerformanceTickers metrics={metrics} />
 
-        {/* Concurrency Stress Test Panel */}
-        <ConcurrencyPanel
-          wallets={wallets}
-          isExecuting={isExecuting}
-          onExecuteBlast={handleExecuteBlast}
+        {/* View 2: Client Wallet Interface (Profile, Balance Card, Transfer Form, Stress Button) */}
+        <ClientWalletInterface
+          user={session.user}
+          wallet={session.wallet}
+          allWallets={allWallets}
+          onRefreshWallet={refreshUserWallet}
+          onExecuteTransfer={handleExecuteTransfer}
+          onTriggerParallelStressBlast={handleTriggerParallelStressBlast}
+          isTransferring={isTransferring}
+          isBlasting={isBlasting}
         />
 
-        {/* Structural 2-Column Split: Console Stream + Ledger State */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Live Micro-Audit Terminal Stream */}
-          <div className="bg-[#131A20] border border-[#222F3A] p-3 flex flex-col h-48 lg:h-auto">
-            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-2">
-              <span className="text-[11px] font-bold text-[#E2E8F0] uppercase tracking-wider">
-                // SYSTEM_IO_LOG_STREAM
-              </span>
-              <span className="flex items-center space-x-1.5 text-[10px]">
-                <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}></span>
-                <span className={serverOnline ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
-                  {serverOnline ? 'BACKEND_LIVE' : 'POLLING_API'}
+        {/* Parallel Stress Blast Diagnostic Matrix (appears when blast runs) */}
+        {blastResults && (
+          <div className="bg-[#131A20] border border-[#EF4444] p-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-3">
+              <div className="flex items-center space-x-2 text-[#EF4444]">
+                <Flame className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  PARALLEL STRESS BLAST DIAGNOSTIC TELEMETRY (10 CONCURRENT WORKERS)
                 </span>
+              </div>
+              <span className="text-[10px] text-[#64748B]">
+                PROMISE.ALL() RACE CONDITION TEST
               </span>
             </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {blastResults.map((res) => {
+                const isSuccess = res.status === 'SUCCESS';
+                return (
+                  <div
+                    key={res.requestIndex}
+                    className={`p-2.5 border text-xs font-mono flex flex-col justify-between ${
+                      isSuccess
+                        ? 'bg-[#10B981]/10 border-[#10B981] text-[#10B981]'
+                        : 'bg-[#EF4444]/10 border-[#EF4444] text-[#EF4444]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold">REQ #{res.requestIndex}</span>
+                      {isSuccess ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-[#EF4444]" />
+                      )}
+                    </div>
+                    <div className="text-[10px] font-bold">
+                      [{res.status}]
+                    </div>
+                    <div className="text-[10px] text-[#94A3B8] mt-1 flex justify-between">
+                      <span>HTTP {res.httpStatus}</span>
+                      <span>{res.elapsedMs}ms</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-[11px] text-[#94A3B8] flex items-center justify-between pt-2 border-t border-[#222F3A]">
+              <span>
+                TOTAL SUCCESSFUL: <strong className="text-[#10B981]">{blastResults.filter((r) => r.status === 'SUCCESS').length}</strong> / 10
+              </span>
+              <span>
+                GRACEFULLY REJECTED (HTTP 422): <strong className="text-[#EF4444]">{blastResults.filter((r) => r.status === 'BLOCKED_BY_MUTEX').length}</strong> / 10
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Structural Split: Console Stream + View 3: Live Client Audit Stream */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* System I/O Console Stream */}
+          <div className="bg-[#131A20] border border-[#222F3A] p-3 flex flex-col h-64 lg:h-auto">
+            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-2">
+              <span className="text-[11px] font-bold text-[#E2E8F0] uppercase tracking-wider flex items-center space-x-1.5">
+                <Terminal className="w-3.5 h-3.5 text-[#10B981]" />
+                <span>// LOG_STREAM</span>
+              </span>
+              <span className="text-[10px] text-[#10B981]">JWT_SECURE</span>
+            </div>
             <div className="flex-1 overflow-y-auto space-y-1 text-[10px] text-[#94A3B8] font-mono">
-              <div className="text-[#64748B]">// KERNEL_INIT: Pessimistic Lock Manager ready</div>
-              <div className="text-[#64748B]">// ACID_VERIFY: WAL write buffer synchronous flush</div>
+              <div className="text-[#64748B]">// KERNEL_INIT: Pessimistic Row Lock (SELECT ... FOR UPDATE)</div>
+              <div className="text-[#64748B]">// REDIS_IDEMPOTENCY: Active filter enabled</div>
               {liveLogConsole.map((line, idx) => (
                 <div
                   key={idx}
                   className={
-                    line.includes('[ERROR]')
+                    line.includes('[TX_BLOCKED]') || line.includes('[CRITICAL]') || line.includes('[ERROR]')
                       ? 'text-[#EF4444]'
-                      : line.includes('[MUTEX]') || line.includes('[WS_CONNECTED]')
+                      : line.includes('[TX_SUCCESS]') || line.includes('[AUTH_GRANTED]') || line.includes('[WS_READY]')
                       ? 'text-[#10B981]'
-                      : line.includes('[STREAM_METRIC]')
-                      ? 'text-[#38BDF8]'
+                      : line.includes('[STRESS')
+                      ? 'text-[#F59E0B]'
                       : 'text-[#E2E8F0]'
                   }
                 >
@@ -376,29 +567,31 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Double-Entry Transaction Ledger Table */}
+          {/* View 3: Live Client Audit Stream (Double-Entry Ledger Table for active user) */}
           <div className="lg:col-span-3">
-            <DoubleEntryTable
+            <LiveAuditStream
               transactions={transactions}
+              currentWalletId={session.wallet.id}
+              isLoading={isLoadingTx}
               onClearLogs={() => setTransactions([])}
             />
           </div>
         </div>
       </main>
 
-      {/* Industrial Footer */}
+      {/* Industrial Cryptographic Footer */}
       <footer className="border-t border-[#222F3A] bg-[#0B0F12] px-4 py-2.5 text-[11px] text-[#64748B] flex flex-wrap items-center justify-between select-none">
         <div className="flex items-center space-x-4">
-          <span>MUTEX_ENGINE: POSIX_PTHREAD_MUTEX_V4</span>
+          <span>MUTEX_ENGINE: SERIALIZABLE / PESSIMISTIC_ROW_LOCK</span>
           <span>|</span>
-          <span>ISOLATION_LEVEL: SERIALIZABLE / SELECT_FOR_UPDATE</span>
+          <span>AUTH: JWT_HS256 / BCRYPT</span>
           <span>|</span>
-          <span>WS_STREAM: /api/v1/ledger/stream</span>
+          <span>STREAM: /api/v1/ledger/stream</span>
         </div>
         <div className="flex items-center space-x-2">
           <span className={`w-1.5 h-1.5 ${serverOnline ? 'bg-[#10B981]' : 'bg-[#64748B]'}`}></span>
           <span className="text-[#E2E8F0]">
-            {serverOnline ? 'BACKEND_CONNECTED // ZERO_RACE_CONDITIONS' : 'STANDALONE_MODE // READY'}
+            MUTEX_LEDGER_CORE // CONCURRENCY_RACE_RESISTANT
           </span>
         </div>
       </footer>

@@ -1,12 +1,13 @@
 import uuid
 import re
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db_session
+from app.core.auth import get_current_user
 from app.core.exceptions import (
     WalletNotFoundError,
     InsufficientFundsError,
@@ -14,7 +15,7 @@ from app.core.exceptions import (
     ConcurrencyLockError,
     IdempotencyInProgressError,
 )
-from app.models.ledger import Wallet, Transaction, LedgerEntry
+from app.models.ledger import Wallet, Transaction, LedgerEntry, User
 from app.schemas.ledger import (
     TransferRequest,
     TransferResponse,
@@ -52,25 +53,34 @@ def validate_uuid4_header(x_idempotency_key: str = Header(..., alias="X-Idempote
 async def transfer_funds(
     payload: TransferRequest,
     idempotency_key: str = Depends(validate_uuid4_header),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Execute an atomic double-entry ledger transfer between source and destination wallets.
     
-    Guarantees:
-    - Zero floating-point drift (NUMERIC(20,4) precision)
-    - Row-level pessimistic locking (SELECT FOR UPDATE) in deterministic sorted order
-    - Idempotent request protection with 5-minute leasing
-    - Real-time WebSocket metric stream update
+    Protected by JWT verification middleware layer:
+    - Extracted current_user.id must own payload.source_wallet_id.
+    - Idempotency filter via Redis X-Idempotency-Key.
+    - Deterministic alphanumeric sorting of sender and receiver wallet IDs (deadlock prevention).
+    - Row-level pessimistic locking (`SELECT ... FOR UPDATE`).
+    - Validates balance boundaries: If multiple concurrent requests exceed available cash,
+      gracefully rejects exceeding requests with HTTP 422 while processing valid requests successfully.
     """
     try:
-        response = await LedgerService.execute_transfer(payload, idempotency_key)
+        response = await LedgerService.execute_transfer(
+            payload=payload,
+            idempotency_key=idempotency_key,
+            user_id=current_user.id,
+        )
         return response
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except WalletNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
     except InsufficientFundsError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error_code": e.error_code, "message": e.message},
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error_code": "BLOCKED_BY_MUTEX", "message": e.message},
         )
     except CurrencyMismatchError as e:
         raise HTTPException(
@@ -85,7 +95,7 @@ async def transfer_funds(
     except ConcurrencyLockError as e:
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
-            detail={"error_code": e.error_code, "message": e.message},
+            detail={"error_code": "BLOCKED_BY_MUTEX", "message": e.message},
         )
     except Exception as e:
         raise HTTPException(

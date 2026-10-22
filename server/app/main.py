@@ -9,8 +9,9 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.database import init_db, get_session_factory
 from app.core.redis import RedisClient
-from app.api.v1 import wallets, ledger
-from app.models.ledger import Wallet
+from app.core.auth import hash_password
+from app.api.v1 import wallets, ledger, auth
+from app.models.ledger import Wallet, User
 
 # Logging format
 logging.basicConfig(
@@ -21,50 +22,71 @@ logger = logging.getLogger("mutex_ledger.main")
 
 settings = get_settings()
 
-SEED_WALLETS = [
+SEED_USERS = [
     {
-        "id": uuid.UUID("892af410-0000-0000-0000-000000000001"),
-        "user_id": uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        "id": uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        "email": "agent.smith@mutex.core",
+        "password": "Password123!",
+        "wallet_id": uuid.UUID("892af410-0000-0000-0000-000000000001"),
         "currency": "USD",
-        "balance": Decimal("14850250.7500"),
+        "balance": Decimal("1000.0000"),
     },
     {
-        "id": uuid.UUID("310cb912-0000-0000-0000-000000000002"),
-        "user_id": uuid.UUID("00000000-0000-0000-0000-000000000002"),
+        "id": uuid.UUID("00000000-0000-0000-0000-000000000002"),
+        "email": "operator.neo@mutex.core",
+        "password": "Password123!",
+        "wallet_id": uuid.UUID("310cb912-0000-0000-0000-000000000002"),
         "currency": "USD",
-        "balance": Decimal("521400.0000"),
+        "balance": Decimal("1000.0000"),
     },
     {
-        "id": uuid.UUID("762ea184-0000-0000-0000-000000000003"),
-        "user_id": uuid.UUID("00000000-0000-0000-0000-000000000003"),
+        "id": uuid.UUID("00000000-0000-0000-0000-000000000003"),
+        "email": "trinity.cipher@mutex.core",
+        "password": "Password123!",
+        "wallet_id": uuid.UUID("762ea184-0000-0000-0000-000000000003"),
         "currency": "USD",
-        "balance": Decimal("8432190.5000"),
+        "balance": Decimal("1000.0000"),
     },
     {
-        "id": uuid.UUID("994df001-0000-0000-0000-000000000004"),
-        "user_id": uuid.UUID("00000000-0000-0000-0000-000000000004"),
+        "id": uuid.UUID("00000000-0000-0000-0000-000000000004"),
+        "email": "morpheus.root@mutex.core",
+        "password": "Password123!",
+        "wallet_id": uuid.UUID("994df001-0000-0000-0000-000000000004"),
         "currency": "USD",
-        "balance": Decimal("2901240.2500"),
+        "balance": Decimal("1000.0000"),
     },
 ]
 
 
-async def seed_initial_wallets():
+async def seed_initial_users_and_wallets():
     session_factory = get_session_factory()
     async with session_factory() as session:
-        for item in SEED_WALLETS:
-            stmt = select(Wallet).where(Wallet.id == item["id"])
-            existing = (await session.execute(stmt)).scalars().first()
-            if not existing:
-                w = Wallet(
+        for item in SEED_USERS:
+            # Check if user exists
+            u_stmt = select(User).where(User.id == item["id"])
+            existing_user = (await session.execute(u_stmt)).scalars().first()
+            if not existing_user:
+                new_u = User(
                     id=item["id"],
-                    user_id=item["user_id"],
+                    email=item["email"],
+                    password_hash=hash_password(item["password"]),
+                )
+                session.add(new_u)
+                await session.flush()
+
+            # Check if wallet exists
+            w_stmt = select(Wallet).where(Wallet.id == item["wallet_id"])
+            existing_wallet = (await session.execute(w_stmt)).scalars().first()
+            if not existing_wallet:
+                w = Wallet(
+                    id=item["wallet_id"],
+                    user_id=item["id"],
                     currency=item["currency"],
                     balance=item["balance"],
                 )
                 session.add(w)
         await session.commit()
-    logger.info("Seed wallets successfully initialized.")
+    logger.info("Seed users and wallets successfully initialized.")
 
 
 @asynccontextmanager
@@ -72,7 +94,7 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize Database & Seed data
     logger.info("Initializing Mutex Ledger Core database engine...")
     await init_db()
-    await seed_initial_wallets()
+    await seed_initial_users_and_wallets()
     
     # Try connecting to Redis
     await RedisClient.get_client()
@@ -101,6 +123,7 @@ app.add_middleware(
 )
 
 # Include API Routers
+app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(wallets.router, prefix=settings.API_V1_STR)
 app.include_router(ledger.router, prefix=settings.API_V1_STR)
 

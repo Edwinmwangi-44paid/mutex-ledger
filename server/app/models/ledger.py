@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     Index,
+    CheckConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -61,31 +62,77 @@ class LedgerEntryType(str, enum.Enum):
     DEBIT = "debit"
 
 
-class Wallet(Base):
-    __tablename__ = "wallets"
+class User(Base):
+    __tablename__ = "users"
 
-    # id (UUID primary key)
+    # id (UUIDv4 primary key)
     id: Mapped[uuid.UUID] = mapped_column(
         GUID(), primary_key=True, default=uuid.uuid4
     )
-    # user_id (UUID)
-    user_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
-    # currency (VARCHAR, e.g. 'KES', 'USD')
-    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
-    # balance (NUMERIC(20, 4) to eliminate floating-point arithmetic errors)
-    balance: Mapped[Decimal] = mapped_column(
-        Numeric(precision=20, scale=4, asdecimal=True), nullable=False, default=Decimal("0.0000")
+    # email (VARCHAR, unique, indexed)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    # password_hash (VARCHAR)
+    password_hash: Mapped[str] = mapped_column(
+        String(255), nullable=False
     )
     # created_at (TIMESTAMP)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     # Relationships
+    wallets: Mapped[list["Wallet"]] = relationship(
+        "Wallet", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} email={self.email}>"
+
+
+class Wallet(Base):
+    __tablename__ = "wallets"
+
+    # id (UUIDv4 primary key)
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(), primary_key=True, default=uuid.uuid4
+    )
+    # user_id (UUID foreign key linking to users.id with an ON DELETE CASCADE constraint)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # currency (VARCHAR, e.g. 'KES', 'USD')
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
+    # balance (NUMERIC(20, 4), default 1000.0000)
+    balance: Mapped[Decimal] = mapped_column(
+        Numeric(precision=20, scale=4, asdecimal=True),
+        nullable=False,
+        default=Decimal("1000.0000"),
+    )
+    # created_at (TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Check constraint: balance >= 0
+    __table_args__ = (
+        CheckConstraint("balance >= 0", name="chk_wallet_balance_non_negative"),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="wallets")
     ledger_entries: Mapped[list["LedgerEntry"]] = relationship("LedgerEntry", back_populates="wallet")
 
     def __repr__(self) -> str:
-        return f"<Wallet id={self.id} currency={self.currency} balance={self.balance}>"
+        return f"<Wallet id={self.id} user_id={self.user_id} currency={self.currency} balance={self.balance}>"
 
 
 class Transaction(Base):
@@ -123,7 +170,9 @@ class Transaction(Base):
     
     # created_at
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     # Relationships
@@ -160,7 +209,9 @@ class LedgerEntry(Base):
     )
     # created_at
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     # Relationships

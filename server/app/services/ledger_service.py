@@ -121,20 +121,24 @@ class LedgerService:
         cls,
         payload: TransferRequest,
         idempotency_key: str,
+        user_id: Optional[uuid.UUID] = None,
     ) -> TransferResponse:
         """
         Executes strict ACID transfer with:
-        1. Resource ordering (Deadlock prevention)
-        2. Pessimistic row locking (SELECT ... FOR UPDATE)
-        3. Balance validation & explicit rollback on failure
-        4. Atomic double-entry ledger append
-        5. Real-time WebSocket metric broadcasting
+        1. User ownership check (if authenticated, user must own source_wallet_id)
+        2. Idempotency filter via Redis
+        3. Deterministic alphanumeric sorting of sender & receiver wallet IDs to eliminate deadlocks
+        4. Strict database transaction block (BEGIN TX)
+        5. Row-level pessimistic locking (SELECT ... FOR UPDATE) on target wallets
+        6. Balance boundary validation. If concurrent requests exceed available cash, raises InsufficientFundsError (HTTP 422)
+        7. Atomic double-entry ledger append
+        8. Real-time WebSocket metric broadcasting
         """
         start_time = time.perf_counter()
         now_dt = datetime.now(timezone.utc)
         iso_str = now_dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-        # Step 1: Check Idempotency
+        # Step 1: Check Idempotency via Redis / DB
         cached_result = await cls.get_or_lease_idempotency(idempotency_key)
         if cached_result:
             tx_hash = compute_tx_hash(
@@ -159,12 +163,11 @@ class LedgerService:
                 ledger_entries=[],
             )
 
-        # Step 2: Resource ordering to prevent deadlocks
-        # Convert UUID to string and sort deterministically
+        # Step 2: Concurrency Rule: Sort sender and receiver wallet IDs alphanumerically to eliminate deadlocks
         src_id_str = str(payload.source_wallet_id)
         dst_id_str = str(payload.destination_wallet_id)
         
-        # Determine locked order: sorted wallet ID strings
+        # Alphanumerically sorted IDs
         ordered_wallet_ids = sorted([payload.source_wallet_id, payload.destination_wallet_id], key=lambda u: str(u))
 
         session_factory = get_session_factory()
@@ -178,7 +181,7 @@ class LedgerService:
             iso_str,
         )
 
-        # Acquire locks in deterministic sorted order
+        # Acquire in-memory locks in sorted order
         acquired_locks = []
         for w_id in ordered_wallet_ids:
             lk = await cls._acquire_wallet_lock(str(w_id))
@@ -186,12 +189,11 @@ class LedgerService:
             acquired_locks.append(lk)
 
         try:
+            # Step 3: Strict database transaction block (BEGIN TX)
             async with session_factory() as session:
                 async with session.begin():
-                    # Step 3: Execute row-level pessimistic lock (SELECT ... FOR UPDATE)
-                    # Locked sequentially in alphabetical/numerical order
+                    # Step 4: Row-level pessimistic locking (SELECT ... FOR UPDATE) on target wallets
                     wallets_by_id: dict[uuid.UUID, Wallet] = {}
-                    
                     is_sqlite = session.bind.dialect.name == "sqlite"
 
                     for w_id in ordered_wallet_ids:
@@ -208,18 +210,24 @@ class LedgerService:
                     source_wallet = wallets_by_id[payload.source_wallet_id]
                     dest_wallet = wallets_by_id[payload.destination_wallet_id]
 
+                    # Verify ownership if user_id is provided
+                    if user_id is not None and source_wallet.user_id != user_id:
+                        raise PermissionError(
+                            f"User '{user_id}' does not own source wallet '{source_wallet.id}'"
+                        )
+
                     # Validate currency match
                     if source_wallet.currency != dest_wallet.currency:
                         raise CurrencyMismatchError(source_wallet.currency, dest_wallet.currency)
 
-                    # Step 4: Validate balance
+                    # Step 5: Validate balance boundaries
                     if source_wallet.balance < payload.amount:
                         raise InsufficientFundsError(
                             required=f"{payload.amount:.4f}",
                             available=f"{source_wallet.balance:.4f}",
                         )
 
-                    # Step 5: Perform the transfer
+                    # Step 6: Mutate balances accurately
                     source_wallet.balance = (source_wallet.balance - payload.amount).quantize(Decimal("0.0001"))
                     dest_wallet.balance = (dest_wallet.balance + payload.amount).quantize(Decimal("0.0001"))
 
@@ -237,7 +245,7 @@ class LedgerService:
                     session.add(tx_record)
                     await session.flush()
 
-                    # Step 6: Immutable Double-Entry Audit Append
+                    # Step 7: Atomic Double-Entry Ledger Append
                     debit_entry = LedgerEntry(
                         transaction_id=tx_id,
                         wallet_id=payload.source_wallet_id,
@@ -301,14 +309,14 @@ class LedgerService:
 
         except InsufficientFundsError as e:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            # Record failed transaction in database in separate transaction
+            # Record failed transaction in database
             await cls._record_failed_transaction(
                 tx_id=tx_id,
                 idempotency_key=idempotency_key,
                 source_id=payload.source_wallet_id,
                 dest_id=payload.destination_wallet_id,
                 amount=payload.amount,
-                error_reason="INSUFFICIENT_FUNDS",
+                error_reason="BLOCKED_BY_MUTEX: INSUFFICIENT_FUNDS",
                 created_at=now_dt,
             )
 
@@ -317,7 +325,7 @@ class LedgerService:
                 timestamp=iso_str,
                 tx_hash=tx_hash,
                 idempotency_key=idempotency_key,
-                status="REJECTED_INSUFFICIENT_FUNDS",
+                status="BLOCKED_BY_MUTEX",
                 amount=float(payload.amount),
                 source_wallet_id=src_id_str,
                 destination_wallet_id=dst_id_str,
@@ -332,9 +340,8 @@ class LedgerService:
             # Release lease on unexpected or concurrency error so it can be re-attempted
             await cls.release_or_store_idempotency(idempotency_key, None)
 
-            # If it was a concurrency race rejection
             is_race = isinstance(e, ConcurrencyLockError) or "deadlock" in str(e).lower() or "lock" in str(e).lower()
-            status_tag = "REJECTED_RACE_CONDITION" if is_race else "FAILED"
+            status_tag = "BLOCKED_BY_MUTEX" if is_race else "FAILED"
             
             event = StreamMetricEvent(
                 timestamp=iso_str,

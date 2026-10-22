@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # Idempotency lease duration in seconds
     IDEMPOTENCY_LEASE_SECONDS: int = 300  # 5 minutes
     
+    # JWT Authentication
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "MUTEX_LEDGER_SUPER_SECRET_CRYPTOGRAPHIC_KEY_2026")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 1
+
     # Fallback to in-memory mocks if Postgres/Redis cannot connect (ensures standalone testing & demo)
     FALLBACK_IN_MEMORY: bool = True
     
