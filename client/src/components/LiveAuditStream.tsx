@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Activity, Copy, Check } from 'lucide-react';
+import { Activity, Copy, Check } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface LiveAuditStreamProps {
@@ -31,60 +31,65 @@ export const LiveAuditStream: React.FC<LiveAuditStreamProps> = ({
   });
 
   return (
-    <div className="bg-[#131A20] border border-[#222F3A] p-4 flex flex-col shadow-xl">
+    <div className="bg-[#0E141B] border border-[#1E293B] rounded-2xl p-5 flex flex-col shadow-xl hover:border-[#2D3B4E] transition-all">
       {/* Ledger Header */}
-      <div className="flex flex-wrap items-center justify-between border-b border-[#222F3A] pb-3 mb-3 gap-2">
-        <div className="flex items-center space-x-2">
-          <Activity className="w-4 h-4 text-[#10B981]" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-[#E2E8F0]">
-            LIVE CLIENT AUDIT STREAM // DOUBLE-ENTRY LEDGER JOURNAL
-          </h2>
-          <span className="text-[10px] text-[#64748B]">
-            ({filteredTransactions.length} RECORDS)
+      <div className="flex flex-wrap items-center justify-between border-b border-[#1E293B] pb-3 mb-4 gap-3">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-xs font-semibold text-slate-200">
+              Double-Entry Settlement Journal
+            </h2>
+            <p className="text-[11px] text-slate-500">Live transaction stream for active node</p>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#141C24] text-slate-400 border border-[#1E293B]">
+            {filteredTransactions.length} records
           </span>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Filters */}
-          <div className="flex items-center space-x-1 border border-[#222F3A] p-0.5 bg-[#0B0F12]">
+          {/* Filter Segmented Control */}
+          <div className="flex items-center space-x-1 p-1 bg-[#090D11] border border-[#1E293B] rounded-xl text-xs">
             <button
               onClick={() => setFilterMode('ALL')}
-              className={`px-2 py-0.5 text-[10px] uppercase font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                 filterMode === 'ALL'
-                  ? 'bg-[#222F3A] text-[#E2E8F0]'
-                  : 'text-[#64748B] hover:text-[#E2E8F0]'
+                  ? 'bg-[#141C24] text-white shadow-sm border border-[#2D3B4E]'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              ALL
+              All
             </button>
             <button
               onClick={() => setFilterMode('SUCCESS_ONLY')}
-              className={`px-2 py-0.5 text-[10px] uppercase font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                 filterMode === 'SUCCESS_ONLY'
-                  ? 'bg-[#10B981]/20 text-[#10B981]'
-                  : 'text-[#64748B] hover:text-[#10B981]'
+                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-emerald-400'
               }`}
             >
-              SUCCESS
+              Settled
             </button>
             <button
               onClick={() => setFilterMode('BLOCKED_ONLY')}
-              className={`px-2 py-0.5 text-[10px] uppercase font-bold transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                 filterMode === 'BLOCKED_ONLY'
-                  ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                  : 'text-[#64748B] hover:text-[#EF4444]'
+                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                  : 'text-slate-400 hover:text-rose-400'
               }`}
             >
-              BLOCKED
+              Blocked (422)
             </button>
           </div>
 
           {onClearLogs && (
             <button
               onClick={onClearLogs}
-              className="text-[10px] text-[#64748B] hover:text-[#EF4444] px-2 py-1 border border-[#222F3A] hover:border-[#EF4444] transition-colors cursor-pointer"
+              className="text-xs text-slate-400 hover:text-rose-400 px-3 py-1.5 rounded-lg border border-[#1E293B] hover:border-rose-500/40 bg-[#090D11] transition-all cursor-pointer"
             >
-              CLEAR_STREAM
+              Clear
             </button>
           )}
         </div>
@@ -92,27 +97,30 @@ export const LiveAuditStream: React.FC<LiveAuditStreamProps> = ({
 
       {/* Ledger Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs font-mono">
+        <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-[#222F3A] text-[#64748B] text-[10px] uppercase tracking-wider">
-              <th className="py-2.5 px-3">TIMESTAMP</th>
-              <th className="py-2.5 px-3">TX HASH</th>
-              <th className="py-2.5 px-3">DESTINATION WALLET</th>
-              <th className="py-2.5 px-3 text-right">AMOUNT (USD)</th>
-              <th className="py-2.5 px-3 text-center">STATUS TAG</th>
+            <tr className="border-b border-[#1E293B] text-slate-400 text-[11px] font-medium">
+              <th className="py-2.5 px-3">Timestamp</th>
+              <th className="py-2.5 px-3">Transaction Hash</th>
+              <th className="py-2.5 px-3">Counterparty Wallet</th>
+              <th className="py-2.5 px-3 text-right">Amount (USD)</th>
+              <th className="py-2.5 px-3 text-center">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#222F3A]/60">
+          <tbody className="divide-y divide-[#1E293B]/60 font-mono text-[11px]">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-[#64748B] text-xs">
-                  SYNCHRONIZING_CLIENT_AUDIT_STREAM...
+                <td colSpan={5} className="py-10 text-center text-slate-500 font-sans text-xs">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-slate-600 border-t-emerald-400 rounded-full animate-spin" />
+                    Synchronizing ledger stream...
+                  </div>
                 </td>
               </tr>
             ) : filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-[#64748B] text-xs">
-                  NO TRANSACTIONS RECORDED FOR ACTIVE USER YET // DISPATCH TRANSFER OR STRESS BLAST TO BEGIN
+                <td colSpan={5} className="py-10 text-center text-slate-500 font-sans text-xs">
+                  No transaction records found for active node. Execute a transfer or stress blast to generate entries.
                 </td>
               </tr>
             ) : (
@@ -123,26 +131,26 @@ export const LiveAuditStream: React.FC<LiveAuditStreamProps> = ({
                 return (
                   <tr
                     key={tx.id}
-                    className="hover:bg-[#172129] transition-colors group"
+                    className="hover:bg-[#141C24]/70 transition-colors group"
                   >
                     {/* Timestamp */}
-                    <td className="py-2.5 px-3 text-[11px] text-[#94A3B8] whitespace-nowrap">
+                    <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
                       {tx.timestamp}
                     </td>
 
                     {/* Tx Hash */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
+                    <td className="py-3 px-3 whitespace-nowrap">
                       <div className="flex items-center space-x-1.5">
-                        <span className="text-xs text-[#E2E8F0] font-bold">
+                        <span className="text-slate-200 font-medium font-mono">
                           {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
                         </span>
                         <button
                           onClick={() => copyToClipboard(tx.hash, tx.hash)}
                           title="Copy full cryptographic hash"
-                          className="opacity-0 group-hover:opacity-100 text-[#64748B] hover:text-[#10B981] transition-opacity cursor-pointer p-0.5"
+                          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-emerald-400 transition-opacity cursor-pointer p-0.5"
                         >
                           {copiedHash === tx.hash ? (
-                            <Check className="w-3 h-3 text-[#10B981]" />
+                            <Check className="w-3 h-3 text-emerald-400" />
                           ) : (
                             <Copy className="w-3 h-3" />
                           )}
@@ -151,31 +159,31 @@ export const LiveAuditStream: React.FC<LiveAuditStreamProps> = ({
                     </td>
 
                     {/* Destination Wallet */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="text-[11px] text-[#94A3B8] font-mono select-all">
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className="text-slate-300 font-mono select-all">
                         {tx.destinationWallet}
                       </span>
                       {isMyDestination && (
-                        <span className="ml-1.5 text-[9px] text-[#10B981] bg-[#10B981]/10 px-1 py-0.2 border border-[#10B981]/30">
-                          (INCOMING)
+                        <span className="ml-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-sans">
+                          Incoming
                         </span>
                       )}
                     </td>
 
                     {/* Amount */}
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-xs text-[#E2E8F0]">
+                    <td className="py-3 px-3 text-right whitespace-nowrap font-semibold text-slate-100 tabular-nums">
                       ${Number(tx.amount).toFixed(2)}
                     </td>
 
-                    {/* Flat Status Tag: [ SUCCESS ] in emerald green, or [ BLOCKED_BY_MUTEX ] in ruby red */}
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    {/* Professional Status Pill */}
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
                       {isBlocked ? (
-                        <span className="inline-block px-2 py-0.5 text-[10px] font-bold text-[#EF4444] bg-[#EF4444]/15 border border-[#EF4444] tracking-wider">
-                          [ BLOCKED_BY_MUTEX ]
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium text-rose-300 bg-rose-500/10 border border-rose-500/30 font-sans">
+                          Blocked (422 Mutex)
                         </span>
                       ) : (
-                        <span className="inline-block px-2 py-0.5 text-[10px] font-bold text-[#10B981] bg-[#10B981]/15 border border-[#10B981] tracking-wider">
-                          [ SUCCESS ]
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 font-sans">
+                          Settled
                         </span>
                       )}
                     </td>
@@ -188,11 +196,10 @@ export const LiveAuditStream: React.FC<LiveAuditStreamProps> = ({
       </div>
 
       {/* Footer Info */}
-      <div className="pt-3 border-t border-[#222F3A] mt-3 flex items-center justify-between text-[10px] text-[#64748B]">
-        <span>FILTER: ACTIVE USER WALLET TRANSACTIONS ONLY</span>
-        <span className="flex items-center space-x-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
-          <span>CRYPTOGRAPHIC DOUBLE-ENTRY AUDIT TRAIL</span>
+      <div className="pt-3 border-t border-[#1E293B] mt-4 flex items-center justify-between text-xs text-slate-500">
+        <span>Displaying ledger records for current node session</span>
+        <span className="text-slate-400 font-mono text-[11px]">
+          Double-Entry Debit &amp; Credit Verified
         </span>
       </div>
     </div>

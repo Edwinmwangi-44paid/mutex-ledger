@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Cpu, ShieldCheck, Clock } from 'lucide-react';
 
 export const TopBanner: React.FC = () => {
   const [timestamp, setTimestamp] = useState<string>('');
@@ -22,45 +23,53 @@ export const TopBanner: React.FC = () => {
   }, []);
 
   return (
-    <header className="border-b border-[#222F3A] bg-[#131A20] px-4 py-3 select-none">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <header className="border-b border-[#1E293B] bg-[#0E141B]/95 backdrop-blur-md px-4 md:px-6 py-2.5 select-none sticky top-0 z-30">
+      <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Core Branding */}
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <span className="inline-block w-2.5 h-2.5 bg-[#10B981] animate-pulse"></span>
-            <span className="font-bold text-sm tracking-widest text-[#E2E8F0]">
-              MUTEX_LEDGER_CORE
-            </span>
+          <div className="flex items-center space-x-2.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-md shadow-emerald-500/20">
+              <div className="w-full h-full bg-[#0E141B] rounded-[6px] flex items-center justify-center">
+                <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-xs tracking-tight text-slate-100 flex items-center gap-1.5">
+                MUTEX LEDGER
+                <span className="text-[10px] font-mono font-medium text-slate-400">CORE</span>
+              </span>
+            </div>
           </div>
-          <span className="text-xs px-2 py-0.5 bg-[#0B0F12] border border-[#222F3A] text-[#64748B] font-mono">
-            v2.4.9-PROD
+          <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#141C24] border border-[#1E293B] text-slate-400 font-mono">
+            v2.5.0
           </span>
-          <span className="hidden md:inline-block text-xs text-[#64748B]">
-            | CLUSTER_NODE: [EU-CENTRAL-04]
+          <span className="hidden md:inline-block text-[11px] text-slate-500 font-mono">
+            cluster: eu-central-04
           </span>
         </div>
 
         {/* System State Badges */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-[#0B0F12] border border-[#222F3A]">
-            <span className="text-[#64748B]">ACID:</span>
-            <span className="text-[#10B981] font-semibold">COMPLIANT</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#090D11] border border-[#1E293B] text-[11px]">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-slate-400">ACID:</span>
+            <span className="text-emerald-400 font-medium">SERIALIZABLE</span>
           </div>
 
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-[#0B0F12] border border-[#222F3A]">
-            <span className="text-[#64748B]">INTEGRITY:</span>
-            <span className="text-[#10B981] font-semibold">SECURE [SHA-256]</span>
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#090D11] border border-[#1E293B] text-[11px]">
+            <span className="text-slate-400">LOCK:</span>
+            <span className="text-slate-200 font-mono text-[10px]">PESSIMISTIC_ROW</span>
           </div>
 
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-[#0B0F12] border border-[#222F3A]">
-            <span className="inline-block w-1.5 h-1.5 rounded-none bg-[#10B981]"></span>
-            <span className="text-[#64748B]">WS_FEED:</span>
-            <span className="text-[#10B981] font-semibold">ACTIVE</span>
-            <span className="text-[#64748B] text-[10px]">({latency}ms)</span>
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#090D11] border border-[#1E293B] text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-400">WS Feed:</span>
+            <span className="text-emerald-400 font-mono font-medium">{latency}ms</span>
           </div>
 
-          <div className="hidden lg:flex items-center px-2.5 py-1 bg-[#0B0F12] border border-[#222F3A] text-[#64748B]">
-            <span>{timestamp || 'INITIALIZING_CLOCK...'}</span>
+          <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#090D11] border border-[#1E293B] text-[11px] text-slate-400 font-mono">
+            <Clock className="w-3 h-3 text-slate-500" />
+            <span>{timestamp || 'SYNCHRONIZING...'}</span>
           </div>
         </div>
       </div>

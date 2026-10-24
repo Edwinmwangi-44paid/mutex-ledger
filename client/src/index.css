@@ -1,39 +1,54 @@
 @import "tailwindcss";
 
 @theme {
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --color-slate-black: #0B0F12;
-  --color-surface: #131A20;
-  --color-surface-hover: #172129;
-  --color-border: #222F3A;
-  --color-border-bright: #2E4050;
-  --color-offwhite: #E2E8F0;
-  --color-muted: #64748B;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --color-slate-black: #090D11;
+  --color-surface: #0E141B;
+  --color-surface-hover: #141C24;
+  --color-border: #1E293B;
+  --color-border-bright: #334155;
+  --color-offwhite: #F1F5F9;
+  --color-muted: #94A3B8;
   --color-emerald-accent: #10B981;
-  --color-ruby-accent: #EF4444;
+  --color-ruby-accent: #F43F5E;
 }
 
 :root {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  background-color: #0B0F12;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #090D11;
   color: #E2E8F0;
+  color-scheme: dark;
 }
 
-/* Custom Scrollbar for terminal vibe */
+/* Crisp, subtle modern scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F12;
-  border-left: 1px solid #222F3A;
+  background: #090D11;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222F3A;
+  background: #1E293B;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E4050;
+  background: #334155;
+}
+
+/* Subtle dot grid pattern utility for background */
+.bg-grid-subtle {
+  background-size: 28px 28px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Clean numeric tabular figures */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

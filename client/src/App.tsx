@@ -420,40 +420,40 @@ export const App: React.FC = () => {
 
   // Render Logged-In User Interface
   return (
-    <div className="min-h-screen bg-[#0B0F12] text-[#E2E8F0] font-mono flex flex-col antialiased selection:bg-[#222F3A] selection:text-[#10B981]">
+    <div className="min-h-screen bg-[#090D11] text-[#E2E8F0] flex flex-col antialiased selection:bg-[#10B981]/20 selection:text-[#34D399]">
       {/* Top Banner with Connected Status */}
       <TopBanner />
 
       {/* Main Workspace Navigation & Active User Bar */}
-      <div className="bg-[#131A20] border-b border-[#222F3A] px-4 md:px-6 py-2.5">
-        <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div className="bg-[#0E141B]/90 border-b border-[#1E293B] px-4 md:px-6 py-2.5 backdrop-blur-sm sticky top-[49px] z-20">
+        <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <span className="text-[11px] font-bold text-[#10B981] flex items-center space-x-1.5">
-              <Terminal className="w-4 h-4" />
-              <span>TERMINAL_SESSION: ACTIVE</span>
+            <span className="text-xs font-medium text-emerald-400 flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Session Active</span>
             </span>
-            <span className="text-[#64748B]">|</span>
-            <span className="text-xs text-[#E2E8F0] font-bold truncate">
+            <span className="text-slate-600">|</span>
+            <span className="text-xs text-slate-200 font-semibold truncate">
               {session.user.email}
             </span>
-            <span className="text-[10px] text-[#64748B] hidden md:inline">
-              (WALLET: {session.wallet.id.slice(0, 8)}...)
+            <span className="text-[11px] text-slate-500 font-mono hidden md:inline">
+              (Node: {session.wallet.id.slice(0, 8)}...)
             </span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 text-[11px]">
-              <span className={`w-2 h-2 ${serverOnline ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}></span>
-              <span className={serverOnline ? 'text-[#10B981]' : 'text-[#F59E0B]'}>
-                {serverOnline ? 'BACKEND_DAEMON_ONLINE' : 'CONNECTING...'}
+            <div className="flex items-center space-x-2 text-xs">
+              <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <span className={serverOnline ? 'text-emerald-400 font-medium' : 'text-amber-400'}>
+                {serverOnline ? 'Daemon Online' : 'Connecting...'}
               </span>
             </div>
             <button
               onClick={handleLogout}
-              className="px-3 py-1 bg-[#0B0F12] border border-[#222F3A] hover:border-[#EF4444] text-[#94A3B8] hover:text-[#EF4444] text-xs font-bold uppercase transition-colors flex items-center space-x-1.5 cursor-pointer"
+              className="px-3 py-1 rounded-lg bg-[#141C24] border border-[#1E293B] hover:border-rose-500/40 text-slate-400 hover:text-rose-400 text-xs font-medium transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>TERMINATE_SESSION</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -464,7 +464,7 @@ export const App: React.FC = () => {
         {/* Core Performance Tickers */}
         <PerformanceTickers metrics={metrics} />
 
-        {/* View 2: Client Wallet Interface (Profile, Balance Card, Transfer Form, Stress Button) */}
+        {/* Client Wallet Interface (Profile, Balance Card, Transfer Form, Stress Button) */}
         <ClientWalletInterface
           user={session.user}
           wallet={session.wallet}
@@ -478,43 +478,43 @@ export const App: React.FC = () => {
 
         {/* Parallel Stress Blast Diagnostic Matrix (appears when blast runs) */}
         {blastResults && (
-          <div className="bg-[#131A20] border border-[#EF4444] p-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-3">
-              <div className="flex items-center space-x-2 text-[#EF4444]">
+          <div className="bg-[#0E141B] border border-rose-500/40 rounded-2xl p-5 shadow-2xl transition-all">
+            <div className="flex items-center justify-between border-b border-[#1E293B] pb-3 mb-4">
+              <div className="flex items-center space-x-2 text-rose-400">
                 <Flame className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  PARALLEL STRESS BLAST DIAGNOSTIC TELEMETRY (10 CONCURRENT WORKERS)
+                <span className="text-xs font-semibold">
+                  Parallel Concurrency Diagnostic Telemetry (10 Simultaneous Workers)
                 </span>
               </div>
-              <span className="text-[10px] text-[#64748B]">
-                PROMISE.ALL() RACE CONDITION TEST
+              <span className="text-[11px] text-slate-400 font-mono">
+                Promise.all() Race Verification
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {blastResults.map((res) => {
                 const isSuccess = res.status === 'SUCCESS';
                 return (
                   <div
                     key={res.requestIndex}
-                    className={`p-2.5 border text-xs font-mono flex flex-col justify-between ${
+                    className={`p-3 rounded-xl border text-xs flex flex-col justify-between transition-all ${
                       isSuccess
-                        ? 'bg-[#10B981]/10 border-[#10B981] text-[#10B981]'
-                        : 'bg-[#EF4444]/10 border-[#EF4444] text-[#EF4444]'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold">REQ #{res.requestIndex}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-semibold font-mono">Req #{res.requestIndex}</span>
                       {isSuccess ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       ) : (
-                        <XCircle className="w-3.5 h-3.5 text-[#EF4444]" />
+                        <XCircle className="w-4 h-4 text-rose-400" />
                       )}
                     </div>
-                    <div className="text-[10px] font-bold">
-                      [{res.status}]
+                    <div className="text-[11px] font-semibold">
+                      {isSuccess ? 'Settled (200 OK)' : 'Blocked (422 Mutex)'}
                     </div>
-                    <div className="text-[10px] text-[#94A3B8] mt-1 flex justify-between">
+                    <div className="text-[10px] text-slate-400 mt-2 flex justify-between font-mono">
                       <span>HTTP {res.httpStatus}</span>
                       <span>{res.elapsedMs}ms</span>
                     </div>
@@ -522,42 +522,52 @@ export const App: React.FC = () => {
                 );
               })}
             </div>
-            <div className="mt-3 text-[11px] text-[#94A3B8] flex items-center justify-between pt-2 border-t border-[#222F3A]">
+            <div className="mt-4 text-xs text-slate-400 flex flex-wrap items-center justify-between pt-3 border-t border-[#1E293B] gap-2">
               <span>
-                TOTAL SUCCESSFUL: <strong className="text-[#10B981]">{blastResults.filter((r) => r.status === 'SUCCESS').length}</strong> / 10
+                Total Settled Successfully:{' '}
+                <strong className="text-emerald-400 font-mono">
+                  {blastResults.filter((r) => r.status === 'SUCCESS').length}
+                </strong>{' '}
+                / 10
               </span>
               <span>
-                GRACEFULLY REJECTED (HTTP 422): <strong className="text-[#EF4444]">{blastResults.filter((r) => r.status === 'BLOCKED_BY_MUTEX').length}</strong> / 10
+                Gracefully Rejected By Mutex Lock (HTTP 422):{' '}
+                <strong className="text-rose-400 font-mono">
+                  {blastResults.filter((r) => r.status === 'BLOCKED_BY_MUTEX').length}
+                </strong>{' '}
+                / 10
               </span>
             </div>
           </div>
         )}
 
-        {/* Structural Split: Console Stream + View 3: Live Client Audit Stream */}
+        {/* Split: Live Log Stream + Live Client Audit Stream */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* System I/O Console Stream */}
-          <div className="bg-[#131A20] border border-[#222F3A] p-3 flex flex-col h-64 lg:h-auto">
-            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-2">
-              <span className="text-[11px] font-bold text-[#E2E8F0] uppercase tracking-wider flex items-center space-x-1.5">
-                <Terminal className="w-3.5 h-3.5 text-[#10B981]" />
-                <span>// LOG_STREAM</span>
+          <div className="bg-[#0E141B] border border-[#1E293B] rounded-2xl p-4 flex flex-col h-72 lg:h-auto hover:border-[#2D3B4E] transition-all">
+            <div className="flex items-center justify-between border-b border-[#1E293B] pb-2.5 mb-2.5">
+              <span className="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Kernel Log Stream</span>
               </span>
-              <span className="text-[10px] text-[#10B981]">JWT_SECURE</span>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Live
+              </span>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-1 text-[10px] text-[#94A3B8] font-mono">
-              <div className="text-[#64748B]">// KERNEL_INIT: Pessimistic Row Lock (SELECT ... FOR UPDATE)</div>
-              <div className="text-[#64748B]">// REDIS_IDEMPOTENCY: Active filter enabled</div>
+            <div className="flex-1 overflow-y-auto space-y-1.5 text-[11px] text-slate-400 font-mono pr-1">
+              <div className="text-slate-500">// KERNEL_INIT: Pessimistic Row Lock active</div>
+              <div className="text-slate-500">// IDEMPOTENCY: Redis SETNX filter enabled</div>
               {liveLogConsole.map((line, idx) => (
                 <div
                   key={idx}
                   className={
                     line.includes('[TX_BLOCKED]') || line.includes('[CRITICAL]') || line.includes('[ERROR]')
-                      ? 'text-[#EF4444]'
+                      ? 'text-rose-400'
                       : line.includes('[TX_SUCCESS]') || line.includes('[AUTH_GRANTED]') || line.includes('[WS_READY]')
-                      ? 'text-[#10B981]'
+                      ? 'text-emerald-400'
                       : line.includes('[STRESS')
-                      ? 'text-[#F59E0B]'
-                      : 'text-[#E2E8F0]'
+                      ? 'text-amber-400'
+                      : 'text-slate-300'
                   }
                 >
                   &gt; {line}
@@ -567,7 +577,7 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* View 3: Live Client Audit Stream (Double-Entry Ledger Table for active user) */}
+          {/* Live Client Audit Stream (Double-Entry Ledger Table) */}
           <div className="lg:col-span-3">
             <LiveAuditStream
               transactions={transactions}
@@ -580,18 +590,18 @@ export const App: React.FC = () => {
       </main>
 
       {/* Industrial Cryptographic Footer */}
-      <footer className="border-t border-[#222F3A] bg-[#0B0F12] px-4 py-2.5 text-[11px] text-[#64748B] flex flex-wrap items-center justify-between select-none">
-        <div className="flex items-center space-x-4">
-          <span>MUTEX_ENGINE: SERIALIZABLE / PESSIMISTIC_ROW_LOCK</span>
-          <span>|</span>
-          <span>AUTH: JWT_HS256 / BCRYPT</span>
-          <span>|</span>
-          <span>STREAM: /api/v1/ledger/stream</span>
+      <footer className="border-t border-[#1E293B] bg-[#090D11] px-4 md:px-6 py-3 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-3 select-none">
+        <div className="flex flex-wrap items-center space-x-3 text-[11px]">
+          <span>MUTEX ENGINE: SERIALIZABLE / SELECT FOR UPDATE</span>
+          <span>•</span>
+          <span>AUTH: JWT HS256 / BCRYPT</span>
+          <span>•</span>
+          <span>WS STREAM: /api/v1/ledger/stream</span>
         </div>
-        <div className="flex items-center space-x-2">
-          <span className={`w-1.5 h-1.5 ${serverOnline ? 'bg-[#10B981]' : 'bg-[#64748B]'}`}></span>
-          <span className="text-[#E2E8F0]">
-            MUTEX_LEDGER_CORE // CONCURRENCY_RACE_RESISTANT
+        <div className="flex items-center space-x-2 text-[11px]">
+          <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+          <span className="text-slate-400 font-medium">
+            Mutex Ledger Core • Deterministic Race Resistance
           </span>
         </div>
       </footer>
@@ -600,3 +610,4 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
