@@ -1,0 +1,16 @@
+{
+  "include": ["server"],
+  "extraPaths": [
+    "server",
+    "C:/Users/edumw/AppData/Local/Programs/Python/Python313/Lib/site-packages"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "server",
+      "extraPaths": [
+        "server",
+        "C:/Users/edumw/AppData/Local/Programs/Python/Python313/Lib/site-packages"
+      ]
+    }
+  ]
+}

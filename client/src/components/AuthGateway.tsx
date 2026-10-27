@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldAlert, Terminal, Lock, Mail, ArrowRight, UserPlus, KeyRound } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, ArrowRight, UserPlus, KeyRound } from 'lucide-react';
 
 interface AuthGatewayProps {
   onAuthSuccess: (session: { token: string; user: any; wallet: any }) => void;
@@ -18,23 +18,23 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
     setErrorMessage(null);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
-      setErrorMessage('VALIDATION_FAULT: Email input cannot be empty.');
+      setErrorMessage('Please enter your email address.');
       return false;
     }
     if (!emailRegex.test(email.trim())) {
-      setErrorMessage('VALIDATION_FAULT: Malformed cryptographic email address format.');
+      setErrorMessage('Invalid email format. Please provide a valid email address.');
       return false;
     }
     if (!password) {
-      setErrorMessage('VALIDATION_FAULT: Password secret cannot be empty.');
+      setErrorMessage('Password field cannot be empty.');
       return false;
     }
     if (password.length < 6) {
-      setErrorMessage('VALIDATION_FAULT: Password entropy too low (minimum 6 characters required).');
+      setErrorMessage('Password must be at least 6 characters in length.');
       return false;
     }
     if (mode === 'REGISTER' && password !== confirmPassword) {
-      setErrorMessage('VALIDATION_FAULT: Password checksum mismatch with confirmation field.');
+      setErrorMessage('Password confirmation does not match.');
       return false;
     }
     return true;
@@ -59,15 +59,15 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       const data = await response.json();
 
       if (!response.ok) {
-        let msg = 'AUTHENTICATION_GATEWAY_REJECTION: Access Denied.';
+        let msg = 'Authentication failed. Please verify your credentials.';
         if (typeof data.detail === 'string') {
           msg = data.detail;
         } else if (Array.isArray(data.detail) && data.detail[0]?.msg) {
-          msg = `VALIDATION_FAULT: ${data.detail[0].msg}`;
+          msg = data.detail[0].msg;
         } else if (data.detail?.message) {
           msg = data.detail.message;
         }
-        setErrorMessage(msg.toUpperCase());
+        setErrorMessage(msg);
         return;
       }
 
@@ -86,7 +86,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
         },
       });
     } catch {
-      setErrorMessage('NETWORK_FAULT: Unable to establish handshake with Mutex Ledger Core daemon.');
+      setErrorMessage('Network connection failure. Unable to reach the settlement engine backend.');
     } finally {
       setIsLoading(false);
     }
@@ -99,210 +99,186 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F12] text-[#E2E8F0] font-mono flex flex-col justify-center items-center p-4 antialiased selection:bg-[#222F3A] selection:text-[#10B981]">
-      {/* Background terminal grid subtle accents */}
-      <div className="w-full max-w-md">
-        {/* Terminal Header Bar */}
-        <div className="bg-[#131A20] border border-[#222F3A] border-b-0 p-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 bg-[#EF4444] rounded-none"></span>
-            <span className="w-2.5 h-2.5 bg-[#F59E0B] rounded-none"></span>
-            <span className="w-2.5 h-2.5 bg-[#10B981] rounded-none"></span>
-            <span className="text-[11px] font-bold tracking-widest text-[#64748B] ml-2">
-              MUTEX_LEDGER // AUTH_GATEWAY_V4
-            </span>
-          </div>
-          <span className="text-[10px] text-[#10B981] px-1.5 py-0.5 border border-[#10B981]/30 bg-[#10B981]/10">
-            TLS_PESSIMISTIC_LOCK
-          </span>
-        </div>
+    <div className="min-h-screen bg-[#181A20] text-[#EAECEF] flex flex-col justify-center items-center p-4 antialiased selection:bg-[#F0B90B] selection:text-[#0B0E11] relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[300px] bg-[#F0B90B]/5 blur-[140px] pointer-events-none rounded-full" />
 
-        {/* Main Cryptographic Terminal Surface Card */}
-        <div className="bg-[#131A20] border border-[#222F3A] p-6 shadow-2xl relative">
-          <div className="mb-6 border-b border-[#222F3A] pb-4">
-            <div className="flex items-center space-x-2 text-[#10B981] mb-1">
-              <Terminal className="w-5 h-5" />
-              <h1 className="text-base font-bold tracking-wider uppercase">
-                MUTEX LEDGER CORE
-              </h1>
-            </div>
-            <p className="text-[11px] text-[#64748B]">
-              Deterministic High-Concurrency Double-Entry Accounting Daemon
-            </p>
-          </div>
-
-          {/* Mode Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('LOGIN');
-                setErrorMessage(null);
-              }}
-              className={`py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${
-                mode === 'LOGIN'
-                  ? 'bg-[#10B981] text-[#0B0F12] border-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                  : 'bg-[#0B0F12] text-[#64748B] border-[#222F3A] hover:text-[#E2E8F0]'
-              }`}
-            >
-              [ 01_LOGIN ]
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('REGISTER');
-                setErrorMessage(null);
-              }}
-              className={`py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${
-                mode === 'REGISTER'
-                  ? 'bg-[#10B981] text-[#0B0F12] border-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                  : 'bg-[#0B0F12] text-[#64748B] border-[#222F3A] hover:text-[#E2E8F0]'
-              }`}
-            >
-              [ 02_REGISTER ]
-            </button>
-          </div>
-
-          {/* Industrial Warning Red Typography for Error States */}
-          {errorMessage && (
-            <div className="mb-5 p-3 bg-[#EF4444]/10 border border-[#EF4444] text-[#EF4444] text-xs flex items-start space-x-2.5 animate-pulse">
-              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="font-mono text-[11px] leading-relaxed break-all">
-                <span className="font-bold underline tracking-wider mr-1">[CRITICAL_FAULT]:</span>
-                {errorMessage}
+      <div className="w-full max-w-md relative z-10">
+        {/* Binance Exchange Card Container */}
+        <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="p-6 pb-4 border-b border-[#2B313A] bg-[#181A20]/80">
+            <div className="flex items-center space-x-3 mb-1.5">
+              <div className="w-9 h-9 rounded bg-[#F0B90B] flex items-center justify-center font-extrabold text-[#0B0E11] text-lg shadow-sm">
+                <span>M</span>
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-[#EAECEF] tracking-tight">
+                  Mutex<span className="text-[#F0B90B]">Ex</span> Portal
+                </h1>
+                <p className="text-[12px] text-[#848E9C]">
+                  Institutional Exchange &amp; Concurrency Ledger
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Geometric Auth Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[11px] uppercase tracking-wider text-[#64748B] mb-1.5 flex items-center justify-between">
-                <span className="flex items-center space-x-1.5">
-                  <Mail className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span>CLIENT_EMAIL_IDENTIFIER</span>
-                </span>
-                <span className="text-[9px] text-[#475569]">// RFC_5322</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="agent.smith@mutex.core"
-                className="w-full bg-[#0B0F12] border border-[#222F3A] focus:border-[#10B981] focus:outline-none p-2.5 text-xs text-[#E2E8F0] font-mono transition-colors placeholder:text-[#334155]"
-              />
+          <div className="p-6">
+            {/* Mode Selector Tabs */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#181A20] rounded border border-[#2B313A] mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('LOGIN');
+                  setErrorMessage(null);
+                }}
+                className={`py-2 text-xs font-bold rounded transition-all cursor-pointer ${
+                  mode === 'LOGIN'
+                    ? 'bg-[#2B313A] text-[#F0B90B] shadow-sm'
+                    : 'text-[#848E9C] hover:text-[#EAECEF]'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('REGISTER');
+                  setErrorMessage(null);
+                }}
+                className={`py-2 text-xs font-bold rounded transition-all cursor-pointer ${
+                  mode === 'REGISTER'
+                    ? 'bg-[#2B313A] text-[#F0B90B] shadow-sm'
+                    : 'text-[#848E9C] hover:text-[#EAECEF]'
+                }`}
+              >
+                Create Account
+              </button>
             </div>
 
-            <div>
-              <label className="block text-[11px] uppercase tracking-wider text-[#64748B] mb-1.5 flex items-center justify-between">
-                <span className="flex items-center space-x-1.5">
-                  <Lock className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span>BCRYPT_SECRET_KEY</span>
-                </span>
-                <span className="text-[9px] text-[#475569]">// 12_ROUNDS</span>
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="w-full bg-[#0B0F12] border border-[#222F3A] focus:border-[#10B981] focus:outline-none p-2.5 text-xs text-[#E2E8F0] font-mono transition-colors placeholder:text-[#334155]"
-              />
-            </div>
+            {/* Error Alert */}
+            {errorMessage && (
+              <div className="mb-4 p-3 rounded bg-[#F6465D]/10 border border-[#F6465D]/40 text-[#F6465D] text-xs flex items-start space-x-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-[#F6465D]" />
+                <div className="text-[12px] leading-relaxed break-all font-medium">
+                  <span className="font-bold mr-1">Error:</span>
+                  {errorMessage}
+                </div>
+              </div>
+            )}
 
-            {mode === 'REGISTER' && (
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] uppercase tracking-wider text-[#64748B] mb-1.5 flex items-center justify-between">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
                   <span className="flex items-center space-x-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-[#10B981]" />
-                    <span>CONFIRM_SECRET_KEY</span>
+                    <Mail className="w-3.5 h-3.5 text-[#F0B90B]" />
+                    <span>Email Address</span>
                   </span>
-                  <span className="text-[9px] text-[#475569]">// VERIFY</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@mutex.core"
+                  className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center space-x-1.5">
+                    <Lock className="w-3.5 h-3.5 text-[#F0B90B]" />
+                    <span>Password</span>
+                  </span>
+                  <span className="text-[10px] text-[#848E9C] font-mono">Bcrypt Enforced</span>
                 </label>
                 <input
                   type="password"
                   required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-[#0B0F12] border border-[#222F3A] focus:border-[#10B981] focus:outline-none p-2.5 text-xs text-[#E2E8F0] font-mono transition-colors placeholder:text-[#334155]"
+                  className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
                 />
               </div>
-            )}
 
-            {mode === 'REGISTER' && (
-              <div className="p-2.5 border border-[#222F3A] bg-[#0B0F12] text-[10px] text-[#64748B] space-y-1">
-                <div className="text-[#10B981] font-bold">// AUTOMATIC_SEED_INITIALIZATION:</div>
-                <div>Default Wallet will be created with seed balance: <span className="text-[#10B981] font-bold">$1,000.00 USD</span></div>
-                <div>Check Constraint: <code className="text-[#E2E8F0]">balance &gt;= 0</code> enforced.</div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-3 bg-[#10B981] hover:bg-[#059669] text-[#0B0F12] text-xs font-bold uppercase tracking-widest transition-all border border-[#10B981] flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(16,185,129,0.3)] active:translate-y-0.5"
-            >
-              {isLoading ? (
-                <span>SYNCHRONIZING_HANDSHAKE...</span>
-              ) : mode === 'LOGIN' ? (
-                <>
-                  <span>AUTHENTICATE_SESSION</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              ) : (
-                <>
-                  <span>INSTANTIATE_USER_&amp;_WALLET</span>
-                  <UserPlus className="w-4 h-4" />
-                </>
+              {mode === 'REGISTER' && (
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center space-x-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-[#F0B90B]" />
+                    <span>Confirm Password</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
+                  />
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Quick Demo Seed Credentials */}
-          <div className="mt-6 pt-4 border-t border-[#222F3A]">
-            <div className="text-[10px] font-bold text-[#64748B] uppercase mb-2 flex items-center justify-between">
-              <span>// PRE-SEEDED TEST IDENTITIES:</span>
-              <span className="text-[#10B981]">CLICK TO FILL</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              {mode === 'REGISTER' && (
+                <div className="p-3 rounded border border-[#2B313A] bg-[#181A20] text-[11px] text-[#848E9C] space-y-1">
+                  <div className="text-[#0ECB81] font-bold">Seed Balance Guarantee:</div>
+                  <div>Default wallet will be provisioned with <span className="text-[#EAECEF] font-bold font-mono">$1,000.00 USD</span> liquid collateral.</div>
+                </div>
+              )}
+
               <button
-                type="button"
-                onClick={() => handleQuickSeedLogin('agent.smith@mutex.core')}
-                className="p-1.5 bg-[#0B0F12] border border-[#222F3A] hover:border-[#10B981] text-left truncate transition-colors text-[#94A3B8] hover:text-[#10B981]"
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-2 py-3 rounded bg-[#F0B90B] hover:bg-[#FCD535] text-[#0B0E11] text-xs font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
               >
-                agent.smith@mutex.core
+                {isLoading ? (
+                  <span className="animate-pulse">Authorizing Session...</span>
+                ) : mode === 'LOGIN' ? (
+                  <>
+                    <span>Log In to Wallet</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <span>Create Wallet Account</span>
+                    <UserPlus className="w-4 h-4" />
+                  </>
+                )}
               </button>
-              <button
-                type="button"
-                onClick={() => handleQuickSeedLogin('operator.neo@mutex.core')}
-                className="p-1.5 bg-[#0B0F12] border border-[#222F3A] hover:border-[#10B981] text-left truncate transition-colors text-[#94A3B8] hover:text-[#10B981]"
-              >
-                operator.neo@mutex.core
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickSeedLogin('trinity.cipher@mutex.core')}
-                className="p-1.5 bg-[#0B0F12] border border-[#222F3A] hover:border-[#10B981] text-left truncate transition-colors text-[#94A3B8] hover:text-[#10B981]"
-              >
-                trinity.cipher@mutex.core
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickSeedLogin('morpheus.root@mutex.core')}
-                className="p-1.5 bg-[#0B0F12] border border-[#222F3A] hover:border-[#10B981] text-left truncate transition-colors text-[#94A3B8] hover:text-[#10B981]"
-              >
-                morpheus.root@mutex.core
-              </button>
+            </form>
+
+            {/* Quick Demo Identities */}
+            <div className="mt-5 pt-4 border-t border-[#2B313A]">
+              <div className="text-[11px] font-semibold text-[#848E9C] uppercase mb-2 flex items-center justify-between">
+                <span>Demo Trading Accounts</span>
+                <span className="text-[#F0B90B] text-[10px]">Click to fill</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  'agent.smith@mutex.core',
+                  'operator.neo@mutex.core',
+                  'trinity.cipher@mutex.core',
+                  'morpheus.root@mutex.core',
+                ].map((demo) => (
+                  <button
+                    key={demo}
+                    type="button"
+                    onClick={() => handleQuickSeedLogin(demo)}
+                    className="p-2 rounded bg-[#181A20] border border-[#2B313A] hover:border-[#F0B90B] text-left truncate transition-all text-[#848E9C] hover:text-[#F0B90B] font-mono text-[11px] cursor-pointer"
+                  >
+                    {demo}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cryptographic Sub-footer */}
-        <div className="mt-4 text-center text-[10px] text-[#475569]">
-          CIPHER: AES_256_GCM // JWT_EXPIRATION: 3600_SECONDS // SEED_BALANCE: $1,000.00
+        {/* Sub-footer */}
+        <div className="mt-4 text-center text-[11px] text-[#848E9C]">
+          MutexEx Exchange • 2FA Protected • Strict Serializable Row-Locks
         </div>
       </div>
     </div>

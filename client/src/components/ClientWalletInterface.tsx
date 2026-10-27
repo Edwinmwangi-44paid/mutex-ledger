@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import {
-  Wallet,
-  User,
   Send,
-  Zap,
-  ShieldCheck,
-  Flame,
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
   RefreshCw,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowLeftRight,
+  Repeat,
+  TrendingUp,
+  User,
+  ChevronDown,
+  Coins,
 } from 'lucide-react';
 import { WalletNode, UserProfile } from '../types';
+import { AssetDistribution } from './AssetDistribution';
+import { LiveOrderBookChart } from './LiveOrderBookChart';
 
 interface ClientWalletInterfaceProps {
   user: UserProfile;
@@ -19,27 +24,31 @@ interface ClientWalletInterfaceProps {
   allWallets: WalletNode[];
   onRefreshWallet: () => void;
   onExecuteTransfer: (destWalletId: string, amount: number) => Promise<boolean>;
-  onTriggerParallelStressBlast: (destWalletId: string, blastAmount: number) => Promise<void>;
   isTransferring: boolean;
-  isBlasting: boolean;
+  isBalanceHidden: boolean;
+  searchFilter: string;
 }
 
 export const ClientWalletInterface: React.FC<ClientWalletInterfaceProps> = ({
-  user,
   wallet,
   allWallets,
   onRefreshWallet,
   onExecuteTransfer,
-  onTriggerParallelStressBlast,
   isTransferring,
-  isBlasting,
+  isBalanceHidden,
+  searchFilter,
 }) => {
   const [targetWalletId, setTargetWalletId] = useState('');
   const [transferAmount, setTransferAmount] = useState('100.00');
-  const [stressAmount, setStressAmount] = useState('200.00');
+  const [selectedToken, setSelectedToken] = useState<'USD' | 'USDT' | 'BTC' | 'ETH'>('USD');
   const [transferFeedback, setTransferFeedback] = useState<{ type: 'SUCCESS' | 'ERROR'; msg: string } | null>(null);
+  const [selectedActionModal, setSelectedActionModal] = useState<'TRANSFER' | 'DEPOSIT' | 'WITHDRAW' | 'CONVERT' | null>(null);
 
-  // Filter other wallets available for transfer
+  // Convert USD balance into BTC equivalent
+  const btcPrice = 64280.0;
+  const balanceBtc = (Number(wallet.balance) / btcPrice).toFixed(6);
+
+  // Filter other wallets available for recipient selection
   const otherWallets = allWallets.filter((w) => w.id !== wallet.id);
 
   const handleManualTransfer = async (e: React.FormEvent) => {
@@ -48,15 +57,15 @@ export const ClientWalletInterface: React.FC<ClientWalletInterfaceProps> = ({
 
     const amt = parseFloat(transferAmount);
     if (isNaN(amt) || amt <= 0) {
-      setTransferFeedback({ type: 'ERROR', msg: 'INVALID_AMOUNT: Amount must be greater than zero.' });
+      setTransferFeedback({ type: 'ERROR', msg: 'Invalid amount: Must specify a value greater than $0.00.' });
       return;
     }
     if (!targetWalletId.trim()) {
-      setTransferFeedback({ type: 'ERROR', msg: 'DESTINATION_REQUIRED: Provide destination Wallet UUID.' });
+      setTransferFeedback({ type: 'ERROR', msg: 'Recipient Required: Please select a destination recipient account.' });
       return;
     }
     if (targetWalletId.trim() === wallet.id) {
-      setTransferFeedback({ type: 'ERROR', msg: 'ROUTING_FAULT: Cannot transfer funds to own wallet.' });
+      setTransferFeedback({ type: 'ERROR', msg: 'Routing Fault: Self-transfers to the same wallet account are forbidden.' });
       return;
     }
 
@@ -64,289 +73,284 @@ export const ClientWalletInterface: React.FC<ClientWalletInterfaceProps> = ({
     if (success) {
       setTransferFeedback({
         type: 'SUCCESS',
-        msg: `TRANSACTION_COMMITTED: $${amt.toFixed(2)} sent to ${targetWalletId.slice(0, 8)}...`,
+        msg: `Settlement Confirmed: $${amt.toFixed(2)} transferred to ${targetWalletId.slice(0, 8)}...`,
       });
       setTransferAmount('100.00');
     } else {
       setTransferFeedback({
         type: 'ERROR',
-        msg: 'TRANSACTION_BLOCKED: Transfer rejected by backend mutex or insufficient balance.',
+        msg: 'Settlement Rejected: Insufficient balance or concurrency contention.',
       });
     }
   };
 
-  const handleStressBlastClick = () => {
-    const amt = parseFloat(stressAmount);
-    const destination = targetWalletId || (otherWallets[0]?.id ?? '310cb912-0000-0000-0000-000000000002');
-    onTriggerParallelStressBlast(destination, isNaN(amt) ? 200.0 : amt);
-  };
-
   return (
     <div className="space-y-4">
-      {/* Top Split: Profile Card + Wallet Balance Card */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Authenticated User Profile Card */}
-        <div className="bg-[#131A20] border border-[#222F3A] p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2">
-              <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider flex items-center space-x-1.5">
-                <User className="w-3.5 h-3.5 text-[#10B981]" />
-                <span>ACTIVE_AUTHENTICATED_PROFILE</span>
-              </span>
-              <span className="text-[10px] text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 border border-[#10B981]/30">
-                JWT_AUTHENTICATED
-              </span>
-            </div>
+      {/* 1. PRIMARY OVERVIEW CARD & QUICK ACTION ROW (Binance Style) */}
+      <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl p-5 md:p-6 shadow-xl relative overflow-hidden">
+        {/* Subtle Brand Accent Glow */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#F0B90B]/5 rounded-full blur-3xl pointer-events-none" />
 
-            <div>
-              <div className="text-[10px] uppercase text-[#64748B] mb-0.5">IDENTIFIER (EMAIL)</div>
-              <div className="text-sm font-bold text-[#E2E8F0] truncate">{user.email}</div>
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase text-[#64748B] mb-0.5">USER_UUID</div>
-              <div className="text-xs text-[#94A3B8] font-mono select-all bg-[#0B0F12] p-1.5 border border-[#222F3A] break-all">
-                {user.id}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase text-[#64748B] mb-0.5">OWNED_WALLET_UUID</div>
-              <div className="text-xs text-[#10B981] font-mono select-all bg-[#0B0F12] p-1.5 border border-[#222F3A] break-all">
-                {wallet.id}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-[#222F3A] mt-3 flex items-center justify-between text-[10px] text-[#64748B]">
-            <span>ROUNDS: BCRYPT_12</span>
-            <span>TOKEN_EXPIRY: 3600s</span>
-          </div>
-        </div>
-
-        {/* Prominent Highly Styled Wallet Balance Card */}
-        <div className="md:col-span-2 bg-[#131A20] border border-[#222F3A] p-6 relative flex flex-col justify-between shadow-lg">
-          <div className="flex items-center justify-between border-b border-[#222F3A] pb-3 mb-4">
-            <div className="flex items-center space-x-2">
-              <Wallet className="w-5 h-5 text-[#10B981]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#E2E8F0]">
-                WALLET BALANCE STATE // LIQUID ASSET LEDGER
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              {/* Currency Badge */}
-              <span className="px-2.5 py-1 text-xs font-bold bg-[#10B981]/15 text-[#10B981] border border-[#10B981] tracking-widest">
-                {wallet.currency || 'USD'}
-              </span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          {/* Balance Block */}
+          <div>
+            <div className="flex items-center space-x-2 text-xs text-[#848E9C] mb-1.5 font-medium">
+              <span>Estimated Total Balance</span>
               <button
                 onClick={onRefreshWallet}
-                title="Synchronize balance with DB"
-                className="p-1.5 bg-[#0B0F12] border border-[#222F3A] text-[#94A3B8] hover:text-[#10B981] hover:border-[#10B981] transition-colors cursor-pointer"
+                title="Sync balance"
+                className="hover:text-[#F0B90B] transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
 
-          {/* Right-aligned monospaced digits formatted exactly to two decimal places */}
-          <div className="my-auto py-2">
-            <div className="text-[11px] text-[#64748B] uppercase tracking-wider mb-1 flex items-center justify-between">
-              <span>AVAILABLE_SETTLED_CASH</span>
-              <span className="text-[#10B981]">// ZERO_FLOATING_POINT_DRIFT</span>
+            {/* Primary Crypto Display (BTC) */}
+            <div className="flex items-baseline space-x-3">
+              <span className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#EAECEF] font-mono tracking-tight">
+                {isBalanceHidden ? '********' : balanceBtc}
+              </span>
+              <span className="text-base md:text-lg font-bold text-[#F0B90B] font-mono">
+                BTC
+              </span>
             </div>
-            <div className="text-right">
-              <span className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#E2E8F0] font-mono selection:bg-[#10B981] selection:text-[#0B0F12]">
-                ${Number(wallet.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+            {/* Secondary Fiat Conversion (USD) & Mini 24h PnL Indicator */}
+            <div className="flex items-center space-x-3 mt-1.5 text-xs text-[#848E9C]">
+              <span className="font-mono text-sm text-[#848E9C]">
+                ≈ {isBalanceHidden ? '********' : `$${Number(wallet.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`}
+              </span>
+              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-bold text-[#0ECB81] bg-[#0ECB81]/15 font-mono">
+                <TrendingUp className="w-3 h-3" />
+                <span>Today's PnL +$38.40 (+3.42%)</span>
               </span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#222F3A] flex flex-wrap items-center justify-between text-[11px] text-[#64748B] gap-2">
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-              <span>CHECK CONSTRAINT: balance &gt;= 0.0000 ENFORCED</span>
-            </div>
-            <div className="text-[#94A3B8] font-mono">
-              PRECISION: NUMERIC(20,4)
-            </div>
+          {/* Quick Action Row */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => {
+                setTransferFeedback(null);
+                setSelectedActionModal(selectedActionModal === 'DEPOSIT' ? null : 'DEPOSIT');
+              }}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded bg-[#F0B90B] hover:bg-[#FCD535] text-[#0B0E11] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-md shadow-[#F0B90B]/10 active:scale-[0.98]"
+            >
+              <ArrowDownLeft className="w-4 h-4" />
+              <span>Deposit</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setTransferFeedback(null);
+                setSelectedActionModal(selectedActionModal === 'WITHDRAW' ? null : 'WITHDRAW');
+              }}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded bg-[#2B313A] hover:bg-[#363D47] text-[#EAECEF] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-[0.98]"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              <span>Withdraw</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setTransferFeedback(null);
+                setSelectedActionModal(selectedActionModal === 'TRANSFER' ? null : 'TRANSFER');
+              }}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded bg-[#2B313A] hover:bg-[#363D47] text-[#EAECEF] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-[0.98]"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              <span>Transfer</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setTransferFeedback(null);
+                setSelectedActionModal(selectedActionModal === 'CONVERT' ? null : 'CONVERT');
+              }}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded bg-[#2B313A] hover:bg-[#363D47] text-[#EAECEF] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-[0.98]"
+            >
+              <Repeat className="w-4 h-4" />
+              <span>Convert</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Operations Split: Localized Transfer Form + Concurrency Stress Blast */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Localized Transfer Form */}
-        <div className="bg-[#131A20] border border-[#222F3A] p-5">
-          <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-4">
+        {/* Informational Action Drawer */}
+        {selectedActionModal && selectedActionModal !== 'TRANSFER' && (
+          <div className="mt-4 pt-4 border-t border-[#2B313A] animate-fadeIn text-xs text-[#848E9C] flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Send className="w-4 h-4 text-[#10B981]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#E2E8F0]">
-                LOCALIZED CLIENT TRANSFER
+              <span className="w-2 h-2 rounded-full bg-[#F0B90B]"></span>
+              <span>
+                {selectedActionModal === 'DEPOSIT' && 'Direct on-chain crypto deposits automatically settle into your Primary Liquid Wallet.'}
+                {selectedActionModal === 'WITHDRAW' && 'Withdrawals adhere to serializable isolation with instant confirmation.'}
+                {selectedActionModal === 'CONVERT' && 'Zero-slippage conversion engine active. Instant liquidity between USDT, BTC, ETH.'}
               </span>
             </div>
-            <span className="text-[10px] text-[#64748B]">// DEADLOCK_FREE_SORTED</span>
-          </div>
-
-          {transferFeedback && (
-            <div
-              className={`mb-4 p-2.5 border text-xs flex items-center space-x-2 font-mono ${
-                transferFeedback.type === 'SUCCESS'
-                  ? 'bg-[#10B981]/10 border-[#10B981] text-[#10B981]'
-                  : 'bg-[#EF4444]/10 border-[#EF4444] text-[#EF4444]'
-              }`}
+            <button
+              onClick={() => setSelectedActionModal(null)}
+              className="text-[#848E9C] hover:text-[#EAECEF] cursor-pointer"
             >
-              {transferFeedback.type === 'SUCCESS' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-              )}
-              <span className="text-[11px] break-all">{transferFeedback.msg}</span>
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 2. ASSET DISTRIBUTION & LIST (Spot, Funding, Earn, Futures) */}
+      <AssetDistribution
+        usdBalance={Number(wallet.balance)}
+        isBalanceHidden={isBalanceHidden}
+        searchFilter={searchFilter}
+        onSelectAssetForTransfer={() => setSelectedActionModal('TRANSFER')}
+      />
+
+      {/* 3. EXCHANGE CORE: INSTANT ASSET TRANSFER & LIVE ORDER BOOK */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Instant Peer Transfer Panel */}
+        <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl p-5 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-[#2B313A] pb-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <Send className="w-4 h-4 text-[#F0B90B]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#EAECEF]">
+                  Instant Peer Transfer
+                </span>
+              </div>
+              <span className="text-[11px] text-[#0ECB81] font-mono">0% Fee • Instant Settlement</span>
             </div>
-          )}
 
-          <form onSubmit={handleManualTransfer} className="space-y-3">
-            <div>
-              <label className="block text-[11px] uppercase tracking-wider text-[#64748B] mb-1 flex items-center justify-between">
-                <span>DESTINATION WALLET UUID</span>
-                <span className="text-[10px] text-[#10B981]">SELECT OR PASTE</span>
-              </label>
+            {transferFeedback && (
+              <div
+                className={`mb-4 p-3 rounded border text-xs flex items-center space-x-2.5 ${
+                  transferFeedback.type === 'SUCCESS'
+                    ? 'bg-[#0ECB81]/10 border-[#0ECB81]/40 text-[#0ECB81]'
+                    : 'bg-[#F6465D]/10 border-[#F6465D]/40 text-[#F6465D]'
+                }`}
+              >
+                {transferFeedback.type === 'SUCCESS' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-[#0ECB81]" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-[#F6465D]" />
+                )}
+                <span className="text-[12px] leading-tight break-all font-mono">{transferFeedback.msg}</span>
+              </div>
+            )}
 
-              {otherWallets.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {otherWallets.map((w, idx) => (
+            <form onSubmit={handleManualTransfer} className="space-y-4">
+              {/* Asset / Token Selector Row */}
+              <div>
+                <label className="block text-[11px] font-medium uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
+                  <span>Transfer Asset</span>
+                  <span className="text-[11px] text-[#848E9C] font-mono">
+                    Available: ${Number(wallet.balance).toFixed(2)} USD
+                  </span>
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['USD', 'USDT', 'BTC', 'ETH'] as const).map((tok) => (
                     <button
                       type="button"
-                      key={w.id}
-                      onClick={() => setTargetWalletId(w.id)}
-                      className={`text-[10px] px-2 py-1 border transition-colors cursor-pointer truncate max-w-[200px] ${
-                        targetWalletId === w.id
-                          ? 'border-[#10B981] text-[#10B981] bg-[#10B981]/10'
-                          : 'border-[#222F3A] text-[#94A3B8] hover:border-[#10B981]/50'
+                      key={tok}
+                      onClick={() => setSelectedToken(tok)}
+                      className={`py-2 px-2.5 rounded border text-xs font-semibold font-mono transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                        selectedToken === tok
+                          ? 'border-[#F0B90B] text-[#F0B90B] bg-[#F0B90B]/10'
+                          : 'border-[#2B313A] text-[#848E9C] bg-[#181A20] hover:border-[#848E9C] hover:text-[#EAECEF]'
                       }`}
                     >
-                      {w.name || `PEER_${idx + 1}`} ({w.id.slice(0, 8)}...)
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>{tok}</span>
                     </button>
                   ))}
                 </div>
-              )}
-
-              <input
-                type="text"
-                required
-                value={targetWalletId}
-                onChange={(e) => setTargetWalletId(e.target.value)}
-                placeholder="00000000-0000-0000-0000-000000000000"
-                className="w-full bg-[#0B0F12] border border-[#222F3A] focus:border-[#10B981] focus:outline-none p-2 text-xs text-[#E2E8F0] font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] uppercase tracking-wider text-[#64748B] mb-1 flex items-center justify-between">
-                <span>TRANSFER AMOUNT ({wallet.currency || 'USD'})</span>
-                <span className="text-[10px] text-[#64748B]">MAX: ${Number(wallet.balance).toFixed(2)}</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs text-[#64748B] font-mono">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
-                  className="w-full bg-[#0B0F12] border border-[#222F3A] focus:border-[#10B981] focus:outline-none py-2 pl-7 pr-3 text-xs text-[#E2E8F0] font-mono"
-                />
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isTransferring || isBlasting}
-              className="w-full py-2.5 bg-[#10B981] hover:bg-[#059669] text-[#0B0F12] font-bold text-xs uppercase tracking-wider transition-colors border border-[#10B981] flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-            >
-              {isTransferring ? (
-                <span>EXECUTING_ATOMIC_TX...</span>
-              ) : (
-                <>
-                  <span>DISPATCH_TRANSFER</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        </div>
+              {/* Clean Recipient Selector Dropdown / Search */}
+              <div>
+                <label className="block text-[11px] font-medium uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
+                  <span>Select Recipient Account</span>
+                  <span className="text-[10px] text-[#F0B90B] font-mono">Internal Accounts</span>
+                </label>
 
-        {/* The Concurrency Stress Button & Section */}
-        <div className="bg-[#131A20] border border-[#222F3A] p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-[#222F3A] pb-2 mb-3">
-              <div className="flex items-center space-x-2">
-                <Flame className="w-4 h-4 text-[#EF4444]" />
-                <span className="text-xs font-bold uppercase tracking-wider text-[#E2E8F0]">
-                  CONCURRENCY STRESS BLAST ENGINE
-                </span>
-              </div>
-              <span className="text-[10px] text-[#EF4444] px-1.5 py-0.5 border border-[#EF4444]/30 bg-[#EF4444]/10">
-                10x PARALLEL WORKERS
-              </span>
-            </div>
+                <div className="relative mb-2">
+                  <select
+                    value={targetWalletId}
+                    onChange={(e) => setTargetWalletId(e.target.value)}
+                    className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] font-mono appearance-none transition-all cursor-pointer"
+                  >
+                    <option value="">-- Choose Recipient Client --</option>
+                    {otherWallets.map((w, idx) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name || `Client #${idx + 1}`} ({w.id})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#848E9C] absolute right-3 top-3 pointer-events-none" />
+                </div>
 
-            <p className="text-[11px] text-[#94A3B8] leading-relaxed mb-3">
-              Fires <span className="text-[#E2E8F0] font-bold">10 simultaneous fetch requests</span> using{' '}
-              <code className="text-[#10B981]">Promise.all()</code> to force a balance race condition on your own account.
-              Under pessimistic row-locking (<code className="text-[#10B981]">SELECT ... FOR UPDATE</code>), legitimate requests
-              process atomically, while concurrent bursts that exceed available funds are gracefully rejected with{' '}
-              <span className="text-[#EF4444] font-bold">HTTP 422 (BLOCKED_BY_MUTEX)</span>.
-            </p>
-
-            <div className="bg-[#0B0F12] border border-[#222F3A] p-3 mb-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B]">BURST PACKET COUNT:</span>
-                <span className="text-[#10B981] font-bold font-mono">10 ASYNC REQUESTS</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B]">DISPATCH PROTOCOL:</span>
-                <span className="text-[#E2E8F0] font-mono">Promise.all() + X-Idempotency-Key</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#64748B]">PER-REQUEST AMOUNT:</span>
-                <div className="flex items-center space-x-1">
-                  <span className="text-xs text-[#64748B]">$</span>
+                <div className="relative">
+                  <User className="w-3.5 h-3.5 text-[#848E9C] absolute left-3 top-3 pointer-events-none" />
                   <input
-                    type="number"
-                    step="10"
-                    min="1"
-                    value={stressAmount}
-                    onChange={(e) => setStressAmount(e.target.value)}
-                    className="w-20 bg-[#131A20] border border-[#222F3A] px-2 py-0.5 text-xs text-[#E2E8F0] font-mono text-right"
+                    type="text"
+                    required
+                    value={targetWalletId}
+                    onChange={(e) => setTargetWalletId(e.target.value)}
+                    placeholder="Or enter recipient wallet address / UUID..."
+                    className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none py-2.5 pl-8 pr-3 text-xs text-[#EAECEF] font-mono placeholder:text-[#474D57] transition-all"
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-[#64748B] pt-1 border-t border-[#222F3A]">
-                <span>TOTAL ATTEMPTED EXPOSURE:</span>
-                <span className="text-[#F59E0B] font-bold font-mono">
-                  ${(parseFloat(stressAmount || '0') * 10).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* The Concurrency Stress Button */}
-          <button
-            type="button"
-            onClick={handleStressBlastClick}
-            disabled={isBlasting || isTransferring}
-            className="w-full py-3.5 bg-[#EF4444] hover:bg-[#DC2626] text-[#0B0F12] font-extrabold text-xs tracking-widest uppercase transition-all border border-[#EF4444] flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 shadow-[0_0_20px_rgba(239,68,68,0.35)] active:translate-y-0.5"
-          >
-            {isBlasting ? (
-              <span className="animate-pulse">BLASTING 10 PARALLEL FETCH REQUESTS...</span>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 fill-current" />
-                <span>TRIGGER_PARALLEL_STRESS_BLAST</span>
-              </>
-            )}
-          </button>
+              {/* Polished Transfer Amount Input */}
+              <div>
+                <label className="block text-[11px] font-medium uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
+                  <span>Transfer Amount</span>
+                  <button
+                    type="button"
+                    onClick={() => setTransferAmount(Number(wallet.balance).toFixed(2))}
+                    className="text-[10px] text-[#F0B90B] hover:underline uppercase font-bold cursor-pointer"
+                  >
+                    Max
+                  </button>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-[#848E9C] font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none py-2.5 pl-7 pr-16 text-sm text-[#EAECEF] font-mono font-medium transition-all"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-[#848E9C] font-mono font-semibold">
+                    {selectedToken}
+                  </span>
+                </div>
+              </div>
+
+              {/* High-End Trading CTA Execution Button */}
+              <button
+                type="submit"
+                disabled={isTransferring}
+                className="w-full py-3.5 rounded bg-[#F0B90B] hover:bg-[#FCD535] text-[#0B0E11] font-extrabold text-xs tracking-wider uppercase transition-all shadow-md shadow-[#F0B90B]/15 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 active:scale-[0.99] mt-2"
+              >
+                {isTransferring ? (
+                  <span className="animate-pulse">Settling Transfer...</span>
+                ) : (
+                  <>
+                    <span>Dispatch Peer Transfer</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Live Order Book / Asset Price Chart Canvas */}
+        <div className="h-full">
+          <LiveOrderBookChart />
         </div>
       </div>
     </div>

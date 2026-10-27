@@ -1,39 +1,54 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --color-slate-black: #0B0F12;
-  --color-surface: #131A20;
-  --color-surface-hover: #172129;
-  --color-border: #222F3A;
-  --color-border-bright: #2E4050;
-  --color-offwhite: #E2E8F0;
-  --color-muted: #64748B;
-  --color-emerald-accent: #10B981;
-  --color-ruby-accent: #EF4444;
+  
+  --color-binance-black: #0B0E11;
+  --color-binance-bg: #181A20;
+  --color-binance-card: #1E2329;
+  --color-binance-hover: #2B3139;
+  --color-binance-border: #2B313A;
+  
+  --color-binance-gold: #F0B90B;
+  --color-binance-gold-hover: #FCD535;
+  --color-binance-green: #0ECB81;
+  --color-binance-red: #F6465D;
+  
+  --color-binance-text: #EAECEF;
+  --color-binance-muted: #848E9C;
+  --color-binance-subtle: #474D57;
 }
 
 :root {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  background-color: #0B0F12;
-  color: #E2E8F0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #181A20;
+  color: #EAECEF;
+  letter-spacing: -0.01em;
 }
 
-/* Custom Scrollbar for terminal vibe */
+/* Institutional custom subtle scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F12;
-  border-left: 1px solid #222F3A;
+  background: #181A20;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222F3A;
+  background: #2B3139;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E4050;
+  background: #474D57;
+}
+
+.crypto-row-hover {
+  transition: background-color 0.15s ease-in-out;
+}
+.crypto-row-hover:hover {
+  background-color: #2B3139;
 }
