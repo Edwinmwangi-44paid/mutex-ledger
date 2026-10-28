@@ -22,6 +22,8 @@ from app.schemas.ledger import (
     WalletResponse,
     WalletCreateRequest,
     LedgerEntryResponse,
+    DepositRequest,
+    WithdrawRequest,
 )
 from app.services.ledger_service import LedgerService
 
@@ -102,6 +104,73 @@ async def transfer_funds(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal database execution failure: {str(e)}",
         )
+
+
+@router.post(
+    "/deposit",
+    response_model=TransferResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Deposit funds into wallet",
+)
+async def deposit_funds(
+    payload: DepositRequest,
+    idempotency_key: str = Depends(validate_uuid4_header),
+):
+    """Credit funds directly to user's wallet with atomic double-entry ledger entry."""
+    try:
+        response = await LedgerService.execute_deposit(
+            wallet_id=payload.wallet_id,
+            amount=payload.amount,
+            idempotency_key=idempotency_key,
+            currency=payload.currency or "USD",
+        )
+        return response
+    except WalletNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Deposit failure: {str(e)}",
+        )
+
+
+@router.post(
+    "/withdraw",
+    response_model=TransferResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Withdraw funds from wallet to external destination",
+)
+async def withdraw_funds(
+    payload: WithdrawRequest,
+    idempotency_key: str = Depends(validate_uuid4_header),
+    current_user: User = Depends(get_current_user),
+):
+    """Debit funds from user's wallet to external crypto address with atomic double-entry ledger entry."""
+    try:
+        response = await LedgerService.execute_withdraw(
+            wallet_id=payload.wallet_id,
+            amount=payload.amount,
+            idempotency_key=idempotency_key,
+            destination_address=payload.destination_address,
+            user_id=current_user.id,
+            currency=payload.currency or "USD",
+        )
+        return response
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except WalletNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except InsufficientFundsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error_code": "INSUFFICIENT_FUNDS", "message": e.message},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Withdrawal failure: {str(e)}",
+        )
+
 
 
 @router.get("", response_model=List[WalletResponse], summary="List all wallets")

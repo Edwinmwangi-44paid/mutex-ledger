@@ -81,3 +81,31 @@ class StreamMetricEvent(BaseModel):
     destination_wallet_id: Optional[str] = None
     execution_time_ms: Optional[float] = None
     error_reason: Optional[str] = None
+
+
+class DepositRequest(BaseModel):
+    wallet_id: uuid.UUID = Field(..., description="Target wallet UUID to credit")
+    amount: Decimal = Field(..., gt=Decimal("0.0000"), max_digits=20, decimal_places=4, description="Deposit amount")
+    currency: Optional[str] = Field("USD", description="Currency (USD, USDT, BTC, ETH)")
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        if v <= Decimal("0"):
+            raise ValueError("Deposit amount must be strictly positive")
+        return v.quantize(Decimal("0.0001"))
+
+
+class WithdrawRequest(BaseModel):
+    wallet_id: uuid.UUID = Field(..., description="Source wallet UUID to debit")
+    destination_address: str = Field(..., min_length=6, description="Destination crypto address or bank tag")
+    amount: Decimal = Field(..., gt=Decimal("0.0000"), max_digits=20, decimal_places=4, description="Withdrawal amount")
+    currency: Optional[str] = Field("USD", description="Currency (USD, USDT, BTC, ETH)")
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        if v <= Decimal("0"):
+            raise ValueError("Withdrawal amount must be strictly positive")
+        return v.quantize(Decimal("0.0001"))
+

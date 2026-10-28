@@ -402,3 +402,183 @@ class LedgerService:
             await cls.release_or_store_idempotency(idempotency_key, cached)
         except Exception as ex:
             logger.error(f"Failed to record failed transaction: {ex}")
+
+    @classmethod
+    async def execute_deposit(
+        cls,
+        wallet_id: uuid.UUID,
+        amount: Decimal,
+        idempotency_key: str,
+        currency: str = "USD",
+    ) -> TransferResponse:
+        """Atomic deposit to wallet with double-entry credit record."""
+        start_time = time.perf_counter()
+        now_dt = datetime.now(timezone.utc)
+        iso_str = now_dt.isoformat()
+        tx_id = uuid.uuid4()
+        session_factory = get_session_factory()
+
+        lk = await cls._acquire_wallet_lock(str(wallet_id))
+        await lk.acquire()
+        try:
+            async with session_factory() as session:
+                async with session.begin():
+                    is_sqlite = session.bind.dialect.name == "sqlite"
+                    query = select(Wallet).where(Wallet.id == wallet_id)
+                    if not is_sqlite:
+                        query = query.with_for_update()
+                    res = await session.execute(query)
+                    wallet = res.scalars().first()
+                    if not wallet:
+                        raise WalletNotFoundError(str(wallet_id))
+
+                    wallet.balance = (wallet.balance + amount).quantize(Decimal("0.0001"))
+
+                    tx_record = Transaction(
+                        id=tx_id,
+                        idempotency_key=idempotency_key,
+                        source_wallet_id=wallet_id,
+                        destination_wallet_id=wallet_id,
+                        amount=amount,
+                        status=TransactionStatus.SUCCESS,
+                        error_reason=None,
+                        created_at=now_dt,
+                    )
+                    session.add(tx_record)
+                    await session.flush()
+
+                    credit_entry = LedgerEntry(
+                        transaction_id=tx_id,
+                        wallet_id=wallet_id,
+                        entry_type=LedgerEntryType.CREDIT,
+                        amount=amount,
+                        balance_after=wallet.balance,
+                        created_at=now_dt,
+                    )
+                    session.add(credit_entry)
+                    await session.flush()
+
+            tx_hash = compute_tx_hash(str(tx_id), idempotency_key, "EXTERNAL_DEPOSIT", str(wallet_id), amount, iso_str)
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            # Broadcast WebSocket Event
+            event = StreamMetricEvent(
+                timestamp=iso_str,
+                tx_hash=tx_hash,
+                idempotency_key=idempotency_key,
+                status=TransactionStatus.SUCCESS.value,
+                amount=float(amount),
+                source_wallet_id="EXTERNAL_DEPOSIT",
+                destination_wallet_id=str(wallet_id),
+                execution_time_ms=elapsed_ms,
+            )
+            await ws_manager.broadcast_event(event)
+
+            return TransferResponse(
+                id=tx_id,
+                idempotency_key=idempotency_key,
+                source_wallet_id=wallet_id,
+                destination_wallet_id=wallet_id,
+                amount=amount,
+                status=TransactionStatus.SUCCESS,
+                error_reason=None,
+                created_at=now_dt,
+                execution_time_ms=elapsed_ms,
+                tx_hash=tx_hash,
+            )
+        finally:
+            lk.release()
+
+    @classmethod
+    async def execute_withdraw(
+        cls,
+        wallet_id: uuid.UUID,
+        amount: Decimal,
+        idempotency_key: str,
+        destination_address: str,
+        user_id: Optional[uuid.UUID] = None,
+        currency: str = "USD",
+    ) -> TransferResponse:
+        """Atomic withdrawal from wallet with double-entry debit record."""
+        start_time = time.perf_counter()
+        now_dt = datetime.now(timezone.utc)
+        iso_str = now_dt.isoformat()
+        tx_id = uuid.uuid4()
+        session_factory = get_session_factory()
+
+        lk = await cls._acquire_wallet_lock(str(wallet_id))
+        await lk.acquire()
+        try:
+            async with session_factory() as session:
+                async with session.begin():
+                    is_sqlite = session.bind.dialect.name == "sqlite"
+                    query = select(Wallet).where(Wallet.id == wallet_id)
+                    if not is_sqlite:
+                        query = query.with_for_update()
+                    res = await session.execute(query)
+                    wallet = res.scalars().first()
+                    if not wallet:
+                        raise WalletNotFoundError(str(wallet_id))
+
+                    if user_id is not None and wallet.user_id != user_id:
+                        raise PermissionError(f"User does not own wallet {wallet_id}")
+
+                    if wallet.balance < amount:
+                        raise InsufficientFundsError(required=f"{amount:.4f}", available=f"{wallet.balance:.4f}")
+
+                    wallet.balance = (wallet.balance - amount).quantize(Decimal("0.0001"))
+
+                    tx_record = Transaction(
+                        id=tx_id,
+                        idempotency_key=idempotency_key,
+                        source_wallet_id=wallet_id,
+                        destination_wallet_id=wallet_id,
+                        amount=amount,
+                        status=TransactionStatus.SUCCESS,
+                        error_reason=None,
+                        created_at=now_dt,
+                    )
+                    session.add(tx_record)
+                    await session.flush()
+
+                    debit_entry = LedgerEntry(
+                        transaction_id=tx_id,
+                        wallet_id=wallet_id,
+                        entry_type=LedgerEntryType.DEBIT,
+                        amount=amount,
+                        balance_after=wallet.balance,
+                        created_at=now_dt,
+                    )
+                    session.add(debit_entry)
+                    await session.flush()
+
+            tx_hash = compute_tx_hash(str(tx_id), idempotency_key, str(wallet_id), destination_address, amount, iso_str)
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            event = StreamMetricEvent(
+                timestamp=iso_str,
+                tx_hash=tx_hash,
+                idempotency_key=idempotency_key,
+                status=TransactionStatus.SUCCESS.value,
+                amount=float(amount),
+                source_wallet_id=str(wallet_id),
+                destination_wallet_id=destination_address,
+                execution_time_ms=elapsed_ms,
+            )
+            await ws_manager.broadcast_event(event)
+
+            return TransferResponse(
+                id=tx_id,
+                idempotency_key=idempotency_key,
+                source_wallet_id=wallet_id,
+                destination_wallet_id=wallet_id,
+                amount=amount,
+                status=TransactionStatus.SUCCESS,
+                error_reason=None,
+                created_at=now_dt,
+                execution_time_ms=elapsed_ms,
+                tx_hash=tx_hash,
+            )
+        finally:
+            lk.release()
+
