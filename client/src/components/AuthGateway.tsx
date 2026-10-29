@@ -110,11 +110,11 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           <div className="p-6 pb-4 border-b border-[#2B313A] bg-[#181A20]/80">
             <div className="flex items-center space-x-3 mb-1.5">
               <div className="w-9 h-9 rounded bg-[#F0B90B] flex items-center justify-center font-extrabold text-[#0B0E11] text-lg shadow-sm">
-                <span>M</span>
+                <span>P</span>
               </div>
               <div>
                 <h1 className="text-base font-bold text-[#EAECEF] tracking-tight">
-                  Mutex<span className="text-[#F0B90B]">Ex</span> Portal
+                  Pesa<span className="text-[#F0B90B]">Flip</span> Portal
                 </h1>
                 <p className="text-[12px] text-[#848E9C]">
                   Institutional Exchange &amp; Concurrency Ledger
@@ -181,7 +181,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="user@mutex.core"
+                  placeholder="user@pesaflip.io"
                   className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
                 />
               </div>
@@ -257,10 +257,10 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
-                  'agent.smith@mutex.core',
-                  'operator.neo@mutex.core',
-                  'trinity.cipher@mutex.core',
-                  'morpheus.root@mutex.core',
+                  'agent.smith@pesaflip.io',
+                  'operator.neo@pesaflip.io',
+                  'trinity.cipher@pesaflip.io',
+                  'morpheus.root@pesaflip.io',
                 ].map((demo) => (
                   <button
                     key={demo}
@@ -278,7 +278,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
 
         {/* Sub-footer */}
         <div className="mt-4 text-center text-[11px] text-[#848E9C]">
-          MutexEx Exchange • 2FA Protected • Strict Serializable Row-Locks
+          PesaFlip Exchange • 2FA Protected • Strict Serializable Row-Locks
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-# Mutex Ledger Core Backend API
+# PesaFlip Core Backend API
 
 A high-concurrency, production-grade double-entry financial ledger service built with **Python 3**, **FastAPI (async/await)**, **SQLAlchemy 2.0**, **PostgreSQL / asyncpg**, and **Redis**.
 

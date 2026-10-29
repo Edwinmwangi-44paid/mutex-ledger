@@ -4,7 +4,7 @@ import logging
 from typing import Set, Dict, Any
 from fastapi import WebSocket
 
-logger = logging.getLogger("mutex_ledger.ws")
+logger = logging.getLogger("pesaflip.ws")
 
 
 class ConnectionManager:

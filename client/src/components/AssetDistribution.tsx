@@ -355,7 +355,7 @@ export const AssetDistribution: React.FC<AssetDistributionProps> = ({
       {/* High Density Table Footer */}
       <div className="px-4 py-2.5 bg-[#181A20] border-t border-[#2B313A] flex flex-wrap items-center justify-between text-[11px] text-[#848E9C]">
         <div className="flex items-center space-x-2">
-          <span>Real-time Order Book &amp; Mutex Ledger Linked</span>
+          <span>Real-time Order Book &amp; PesaFlip Linked</span>
           <span>•</span>
           <span className="text-[#0ECB81]">0 Gas Internal Transfers</span>
         </div>

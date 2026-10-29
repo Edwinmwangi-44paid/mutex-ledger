@@ -5,7 +5,7 @@ from typing import Optional
 import redis.asyncio as aioredis
 from app.core.config import get_settings
 
-logger = logging.getLogger("mutex_ledger.redis")
+logger = logging.getLogger("pesaflip.redis")
 settings = get_settings()
 
 

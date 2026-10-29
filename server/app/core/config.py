@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Mutex Ledger Core"
+    PROJECT_NAME: str = "PesaFlip Core"
     API_V1_STR: str = "/api/v1"
     
     # PostgreSQL Configuration
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", "5432"))
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "mutex_ledger")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "pesaflip")
     
     # Database connection URL (can be overridden via DATABASE_URL)
     DATABASE_URL: str | None = None
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     IDEMPOTENCY_LEASE_SECONDS: int = 300  # 5 minutes
     
     # JWT Authentication
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "MUTEX_LEDGER_SUPER_SECRET_CRYPTOGRAPHIC_KEY_2026")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "PESAFLIP_SUPER_SECRET_CRYPTOGRAPHIC_KEY_2026")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
 

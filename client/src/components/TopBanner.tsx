@@ -42,12 +42,12 @@ export const TopBanner: React.FC<TopBannerProps> = ({
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2.5 cursor-pointer">
             <div className="w-8 h-8 rounded bg-[#F0B90B] flex items-center justify-center font-bold text-[#0B0E11] text-lg shadow-sm">
-              <span className="tracking-tighter font-extrabold">M</span>
+              <span className="tracking-tighter font-extrabold">P</span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-1.5">
                 <span className="font-bold text-sm tracking-tight text-[#EAECEF]">
-                  MUTEX<span className="text-[#F0B90B]">EX</span>
+                  Pesa<span className="text-[#F0B90B]">Flip</span>
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#2B313A] text-[#F0B90B] border border-[#F0B90B]/30">
                   VIP 1

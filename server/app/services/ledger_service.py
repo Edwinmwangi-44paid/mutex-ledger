@@ -26,7 +26,7 @@ from app.core.ws_manager import ws_manager
 from app.models.ledger import Wallet, Transaction, LedgerEntry, TransactionStatus, LedgerEntryType
 from app.schemas.ledger import TransferRequest, TransferResponse, StreamMetricEvent
 
-logger = logging.getLogger("mutex_ledger.service")
+logger = logging.getLogger("pesaflip.service")
 settings = get_settings()
 
 

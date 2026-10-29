@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthGateway } from './components/AuthGateway';
 import { ClientWalletInterface } from './components/ClientWalletInterface';
 import { TopBanner } from './components/TopBanner';
 import { PerformanceTickers } from './components/PerformanceTickers';
 import { ExchangeOrdersHistory } from './components/ExchangeOrdersHistory';
+import { LandingPage } from './components/LandingPage';
 import {
   AuthSession,
   WalletNode,
@@ -13,119 +15,68 @@ import {
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
 const WS_URL = 'ws://127.0.0.1:8000/api/v1/ledger/stream';
 
-// Helper to generate UUIDv4
-const generateUUIDv4 = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+const generateUUIDv4 = () =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
-};
 
-export const App: React.FC = () => {
-  // Authentication session state (stored in localStorage for persistence)
-  const [session, setSession] = useState<AuthSession | null>(() => {
-    try {
-      const saved = localStorage.getItem('mutex_ledger_auth_session');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
+/* ─── Dashboard (protected) ─── */
+const Dashboard: React.FC<{
+  session: AuthSession;
+  onLogout: () => void;
+}> = ({ session, onLogout }) => {
   const [allWallets, setAllWallets] = useState<WalletNode[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTx, setIsLoadingTx] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [serverOnline, setServerOnline] = useState<boolean>(false);
+  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(
+    () => localStorage.getItem('binance_balance_hidden') === 'true'
+  );
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Save/clear session in localStorage
-  const handleAuthSuccess = (newSession: AuthSession) => {
-    setSession(newSession);
-    localStorage.setItem('mutex_ledger_auth_session', JSON.stringify(newSession));
-  };
-
-  const handleLogout = () => {
-    setSession(null);
-    localStorage.removeItem('mutex_ledger_auth_session');
-    setTransactions([]);
-  };
-
-  // Synchronize authenticated user profile and wallet balance
   const refreshUserWallet = async () => {
     if (!session?.token) return;
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+      await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${session.token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.wallet) {
-          setSession((prev: AuthSession | null) => {
-            if (!prev) return null;
-            const updated: AuthSession = {
-              ...prev,
-              user: {
-                id: data.id,
-                email: data.email,
-                created_at: data.created_at,
-              },
-              wallet: {
-                id: data.wallet.id,
-                user_id: data.wallet.user_id,
-                currency: data.wallet.currency,
-                balance: Number(data.wallet.balance),
-                created_at: data.wallet.created_at,
-              },
-            };
-            localStorage.setItem('mutex_ledger_auth_session', JSON.stringify(updated));
-            return updated;
-          });
-        }
-      }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   };
 
-  // Fetch all peer wallets for recipient selection
   const fetchAllWallets = async () => {
     try {
       const res = await fetch(`${API_BASE}/wallets`);
       if (res.ok) {
         setServerOnline(true);
         const data = await res.json();
-        const mapped = data.map((w: any) => ({
+        setAllWallets(data.map((w: any) => ({
           id: w.id,
           user_id: w.user_id,
           currency: w.currency || 'USD',
           balance: Number(w.balance),
           created_at: w.created_at,
-        }));
-        setAllWallets(mapped);
+        })));
       }
-    } catch {
-      setServerOnline(false);
-    }
+    } catch { setServerOnline(false); }
   };
 
-  // Fetch only active user's transaction ledger history
   const fetchMyTransactions = async () => {
     if (!session?.token) return;
     setIsLoadingTx(true);
     try {
       const res = await fetch(`${API_BASE}/ledger/my-transactions?limit=50`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { Authorization: `Bearer ${session.token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        const mapped: Transaction[] = data.map((t: any) => ({
+        setTransactions(data.map((t: any) => ({
           id: t.id,
-          timestamp: t.created_at ? t.created_at.replace('T', ' ').slice(0, 19) : new Date().toISOString().replace('T', ' ').slice(0, 19),
+          timestamp: t.created_at
+            ? t.created_at.replace('T', ' ').slice(0, 19)
+            : new Date().toISOString().replace('T', ' ').slice(0, 19),
           hash: t.tx_hash || '0x' + t.id.replace(/-/g, ''),
           idempotencyKey: t.idempotency_key,
           sourceWallet: t.source_wallet_id,
@@ -134,17 +85,12 @@ export const App: React.FC = () => {
           status: t.status === 'success' ? 'SUCCESS' : 'BLOCKED_BY_MUTEX',
           executionTimeMs: t.execution_time_ms || 1.2,
           errorReason: t.error_reason,
-        }));
-        setTransactions(mapped);
+        })));
       }
-    } catch {
-      // ignore
-    } finally {
-      setIsLoadingTx(false);
-    }
+    } catch { /* ignore */ }
+    finally { setIsLoadingTx(false); }
   };
 
-  // WebSocket Live Audit Stream Connection
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimer: any = null;
@@ -152,30 +98,21 @@ export const App: React.FC = () => {
     const connectWs = () => {
       try {
         ws = new WebSocket(WS_URL);
-
-        ws.onopen = () => {
-          setServerOnline(true);
-        };
-
+        ws.onopen = () => setServerOnline(true);
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.status) {
-              // If event pertains to current user's wallet, re-sync state
-              if (
-                session?.wallet &&
-                (data.source_wallet_id === session.wallet.id ||
-                  data.destination_wallet_id === session.wallet.id)
-              ) {
-                refreshUserWallet();
-                fetchMyTransactions();
-              }
+            if (
+              data.status &&
+              session?.wallet &&
+              (data.source_wallet_id === session.wallet.id ||
+                data.destination_wallet_id === session.wallet.id)
+            ) {
+              refreshUserWallet();
+              fetchMyTransactions();
             }
-          } catch {
-            // non-json message
-          }
+          } catch { /* non-json */ }
         };
-
         ws.onerror = () => setServerOnline(false);
         ws.onclose = () => {
           setServerOnline(false);
@@ -189,31 +126,24 @@ export const App: React.FC = () => {
 
     connectWs();
     fetchAllWallets();
-
     return () => {
       if (ws) ws.close();
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
   }, [session?.wallet?.id]);
 
-  // Initial load of transactions if session exists
   useEffect(() => {
-    if (session) {
-      refreshUserWallet();
-      fetchMyTransactions();
-    }
+    refreshUserWallet();
+    fetchMyTransactions();
   }, [session?.token]);
 
-  // Execute standard single peer transfer
   const handleExecuteTransfer = async (
     destWalletId: string,
     amount: number
   ): Promise<boolean> => {
     if (!session) return false;
-
     setIsTransferring(true);
     const idempotencyKey = generateUUIDv4();
-
     try {
       const res = await fetch(`${API_BASE}/wallets/transfer`, {
         method: 'POST',
@@ -225,30 +155,15 @@ export const App: React.FC = () => {
         body: JSON.stringify({
           source_wallet_id: session.wallet.id,
           destination_wallet_id: destWalletId,
-          amount: amount,
+          amount,
         }),
       });
-
-      if (res.ok) {
-        await refreshUserWallet();
-        await fetchMyTransactions();
-        return true;
-      } else {
-        await refreshUserWallet();
-        await fetchMyTransactions();
-        return false;
-      }
-    } catch {
-      return false;
-    } finally {
-      setIsTransferring(false);
-    }
+      await refreshUserWallet();
+      await fetchMyTransactions();
+      return res.ok;
+    } catch { return false; }
+    finally { setIsTransferring(false); }
   };
-
-  // Balance visibility toggle state
-  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(() => {
-    return localStorage.getItem('binance_balance_hidden') === 'true';
-  });
 
   const toggleBalanceVisibility = () => {
     setIsBalanceHidden((prev) => {
@@ -258,42 +173,27 @@ export const App: React.FC = () => {
     });
   };
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Compute real metrics from user's live transactions
   const totalSettledAmount = transactions
     .filter((tx) => tx.status === 'SUCCESS')
     .reduce((acc, tx) => acc + tx.amount, 0);
 
-  // If user is not authenticated, render Authentication Gateway Screen
-  if (!session) {
-    return <AuthGateway onAuthSuccess={handleAuthSuccess} apiBase={API_BASE} />;
-  }
-
-  // Render Logged-In Exchange Interface
   return (
     <div className="min-h-screen bg-[#181A20] text-[#EAECEF] flex flex-col antialiased selection:bg-[#F0B90B] selection:text-[#0B0E11]">
-      {/* Top Binance Header Navigation with Search, Eye Toggle, Profile, Status */}
       <TopBanner
         isBalanceHidden={isBalanceHidden}
         onToggleBalanceVisibility={toggleBalanceVisibility}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         userEmail={session.user.email}
-        onLogout={handleLogout}
+        onLogout={onLogout}
         serverOnline={serverOnline}
       />
-
-      {/* Main Dashboard Body */}
       <main className="flex-1 p-3 md:p-6 space-y-4 max-w-[1720px] w-full mx-auto">
-        {/* Dynamic Real Account Performance Tickers */}
         <PerformanceTickers
           userBalance={Number(session.wallet.balance)}
           transactionsCount={transactions.length}
           totalSettledAmount={totalSettledAmount}
         />
-
-        {/* Client Wallet Interface (Balance Overview, Quick Actions, Assets, Clean Swap Transfer, Live Order Book) */}
         <ClientWalletInterface
           user={session.user}
           wallet={session.wallet}
@@ -304,16 +204,12 @@ export const App: React.FC = () => {
           isBalanceHidden={isBalanceHidden}
           searchFilter={searchQuery}
         />
-
-        {/* Wide Tabular Component: Open Orders / Order History / Transaction History */}
         <ExchangeOrdersHistory
           transactions={transactions}
           currentWalletId={session.wallet.id}
           isLoading={isLoadingTx}
         />
       </main>
-
-      {/* Binance Exchange Footer */}
       <footer className="border-t border-[#2B313A] bg-[#0B0E11] px-6 py-3.5 text-[11px] text-[#848E9C] flex flex-wrap items-center justify-between select-none">
         <div className="flex items-center space-x-4">
           <span>Real-time Custody Ledger</span>
@@ -324,12 +220,73 @@ export const App: React.FC = () => {
         </div>
         <div className="flex items-center space-x-2">
           <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}></span>
-          <span className="text-[#EAECEF] font-medium">
-            MutexEx • Digital Asset Exchange
-          </span>
+          <span className="text-[#EAECEF] font-medium">PesaFlip • Digital Asset Exchange</span>
         </div>
       </footer>
     </div>
+  );
+};
+
+/* ─── Auth wrapper ─── */
+const AuthRoute: React.FC<{
+  session: AuthSession | null;
+  onAuthSuccess: (s: AuthSession) => void;
+}> = ({ session, onAuthSuccess }) => {
+  const navigate = useNavigate();
+  if (session) return <Navigate to="/app" replace />;
+  return (
+    <AuthGateway
+      onAuthSuccess={(s) => { onAuthSuccess(s); navigate('/app'); }}
+      apiBase={API_BASE}
+    />
+  );
+};
+
+/* ═══════════════════════════════════════════════
+   ROOT APP
+═══════════════════════════════════════════════ */
+export const App: React.FC = () => {
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('pesaflip_auth_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const handleAuthSuccess = (newSession: AuthSession) => {
+    setSession(newSession);
+    localStorage.setItem('pesaflip_auth_session', JSON.stringify(newSession));
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    localStorage.removeItem('pesaflip_auth_session');
+  };
+
+  return (
+    <Routes>
+      {/* Landing page — public default */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* Auth — redirects to /app if already logged in */}
+      <Route
+        path="/auth"
+        element={<AuthRoute session={session} onAuthSuccess={handleAuthSuccess} />}
+      />
+
+      {/* Dashboard — protected, redirects to /auth if not logged in */}
+      <Route
+        path="/app"
+        element={
+          session
+            ? <Dashboard session={session} onLogout={handleLogout} />
+            : <Navigate to="/auth" replace />
+        }
+      />
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 

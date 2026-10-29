@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: mutex_ledger
+      POSTGRES_DB: pesaflip
     ports:
       - "5432:5432"
     volumes:
@@ -47,7 +47,7 @@ services:
       POSTGRES_PASSWORD: postgrespassword
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: mutex_ledger
+      POSTGRES_DB: pesaflip
       REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:

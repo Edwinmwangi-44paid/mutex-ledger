@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 from app.core.config import get_settings
 from app.models.ledger import Base
 
-logger = logging.getLogger("mutex_ledger.db")
+logger = logging.getLogger("pesaflip.db")
 
 settings = get_settings()
 

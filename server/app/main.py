@@ -18,7 +18,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("mutex_ledger.main")
+logger = logging.getLogger("pesaflip.main")
 
 settings = get_settings()
 
@@ -92,18 +92,18 @@ async def seed_initial_users_and_wallets():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize Database & Seed data
-    logger.info("Initializing Mutex Ledger Core database engine...")
+    logger.info("Initializing PesaFlip Core database engine...")
     await init_db()
     await seed_initial_users_and_wallets()
     
     # Try connecting to Redis
     await RedisClient.get_client()
-    logger.info("Mutex Ledger Core operational.")
+    logger.info("PesaFlip Core operational.")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down Mutex Ledger Core...")
+    logger.info("Shutting down PesaFlip Core...")
 
 
 app = FastAPI(

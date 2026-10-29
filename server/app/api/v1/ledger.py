@@ -11,7 +11,7 @@ from app.core.ws_manager import ws_manager
 from app.models.ledger import Transaction, LedgerEntry, Wallet, User
 from app.schemas.ledger import TransferResponse, LedgerEntryResponse
 
-logger = logging.getLogger("mutex_ledger.ledger_api")
+logger = logging.getLogger("pesaflip.ledger_api")
 router = APIRouter(prefix="/ledger", tags=["Ledger & Stream"])
 
 
