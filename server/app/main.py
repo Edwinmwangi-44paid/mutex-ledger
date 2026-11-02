@@ -10,8 +10,10 @@ from app.core.config import get_settings
 from app.core.database import init_db, get_session_factory
 from app.core.redis import RedisClient
 from app.core.auth import hash_password
-from app.api.v1 import wallets, ledger, auth
+from app.api.v1 import wallets, ledger, auth, sports, intelligence, discovery
 from app.models.ledger import Wallet, User
+from app.models import sports as sports_models
+from app.services.sports_service import SportsDataService
 
 # Logging format
 logging.basicConfig(
@@ -95,6 +97,7 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing PesaFlip Core database engine...")
     await init_db()
     await seed_initial_users_and_wallets()
+    await SportsDataService.seed_sports_dataset()
     
     # Try connecting to Redis
     await RedisClient.get_client()
@@ -126,6 +129,9 @@ app.add_middleware(
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(wallets.router, prefix=settings.API_V1_STR)
 app.include_router(ledger.router, prefix=settings.API_V1_STR)
+app.include_router(sports.router, prefix=settings.API_V1_STR)
+app.include_router(intelligence.router, prefix=settings.API_V1_STR)
+app.include_router(discovery.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health", tags=["Health"])
