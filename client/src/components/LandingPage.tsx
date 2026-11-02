@@ -1,535 +1,537 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Trophy,
+  LineChart,
+  Film,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Search,
+  ExternalLink,
+  Shield,
+  Sparkles,
+} from 'lucide-react';
 
-/* ─── tiny sparkle component ─── */
-const Sparkle: React.FC<{ className?: string; char?: string; style?: React.CSSProperties }> = ({
-  className = '',
-  char = '✦',
-  style,
-}) => <span className={`sparkle-star ${className}`} style={style}>{char}</span>;
-
-/* ─── static mock price data ─── */
-const PRICES = [
-  { name: 'Bitcoin',  ticker: 'BTC',  price: '$56,290.30', change: '+1.68%', pos: true,  points: '0,25 15,20 25,22 35,10 45,14 55,8 65,12 80,5'  },
-  { name: 'Ethereum', ticker: 'ETH',  price: '$4,284.81',  change: '+4.36%', pos: true,  points: '0,20 10,25 25,15 35,18 50,10 60,14 75,7 80,9'   },
-  { name: 'Cardano',  ticker: 'ADA',  price: '$1.88',      change: '+3.43%', pos: true,  points: '0,15 15,10 30,18 45,12 55,8 65,15 80,10'        },
-  { name: 'Wax',      ticker: 'WAXP', price: '$0.97',      change: '-2.62%', pos: false, points: '0,8 15,12 30,10 45,18 60,22 75,20 80,25'        },
-  { name: 'Polkadot', ticker: 'DOT',  price: '$42.22',     change: '+7.58%', pos: true,  points: '0,25 10,20 25,22 35,15 50,10 60,8 75,5 80,3'   },
-];
-
-const TICKER_COLORS: Record<string, string> = {
-  BTC: '#f7931a', ETH: '#627eea', ADA: '#0033ad', WAXP: '#ff5319', DOT: '#e6007a',
-};
-
-/* ─── Fade-in hook ─── */
-function useFadeIn() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; obs.disconnect(); } },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return ref;
-}
-
-/* ═══════════════════════════════════════════════
-   LANDING PAGE
-═══════════════════════════════════════════════ */
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setSubscribed(true);
-    setEmail('');
-    setTimeout(() => setSubscribed(false), 3000);
+  const toggleFaq = (index: number) => {
+    setActiveFaq(activeFaq === index ? null : index);
   };
 
-  const goAuth = () => navigate('/auth');
-
-  /* ── section refs for fade-in ── */
-  const featRef   = useFadeIn();
-  const investRef = useFadeIn();
-  const supportRef = useFadeIn();
-  const priceRef  = useFadeIn();
-  const safeRef   = useFadeIn();
-  const newsRef   = useFadeIn();
+  const faqs = [
+    {
+      q: 'What is PesaFlip and how does it combine these domains?',
+      a: 'PesaFlip is an all-in-one consumer intelligence platform. Rather than jumping between sports betting forums, cryptocurrency brokers, and movie review databases, PesaFlip aggregates real-time football match stats with Poisson AI predictions, live non-custodial crypto market performance charts, and cinematic entertainment discovery with direct legal streaming availability.',
+    },
+    {
+      q: 'How does the AI Match Prediction Engine calculate probabilities?',
+      a: 'Our engine uses a bivariate Poisson probability model combined with rolling form statistics, home advantage weights, and historical head-to-head metrics. We produce projections for 1X2, Over/Under total goals, Both Teams to Score (BTTS), and Half-Time outcomes. Every prediction communicates statistical reasoning and includes an inherent risk disclaimer.',
+    },
+    {
+      q: 'Is PesaFlip a crypto exchange or betting site?',
+      a: 'No. PesaFlip does not execute financial transactions, accept bets, process deposits, or hold customer funds. The crypto domain is purely for market analytics, price charts, volume tracking, and watchlists. The sports domain provides analytical forecasts and match stats only.',
+    },
+    {
+      q: 'Where does entertainment streaming data come from?',
+      a: 'We retrieve media metadata and authorized streaming platform availability (Netflix, Disney+, Prime Video, Apple TV+, Showmax). PesaFlip does not host or redistribute video content; we guide you directly to legitimate streaming providers.',
+    },
+  ];
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: '#080b12', color: '#fff', overflowX: 'hidden' }}>
-
-      {/* ── GLOBAL STYLES ── */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        a { text-decoration: none; color: inherit; cursor: pointer; }
-
-        /* Sparkle */
-        .sparkle-star {
-          position: absolute; pointer-events: none; user-select: none;
-          color: #fff; opacity: 0.7;
-          animation: sp-pulse 3s ease-in-out infinite;
-        }
-        @keyframes sp-pulse {
-          0%,100%{ opacity:.4; transform:scale(1); }
-          50%    { opacity:1;  transform:scale(1.35); }
-        }
-
-        /* Float */
-        @keyframes float-y {
-          0%,100%{ transform:translateY(0) rotate(-2deg); }
-          50%    { transform:translateY(-18px) rotate(2deg); }
-        }
-        @keyframes float-slow {
-          0%,100%{ transform:translateY(0); }
-          50%    { transform:translateY(-14px); }
-        }
-
-        /* Fade-in sections */
-        .fade-sect {
-          opacity: 0;
-          transform: translateY(28px);
-          transition: opacity .7s ease, transform .7s ease;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar{ width:6px; } ::-webkit-scrollbar-track{ background:#0d1120; }
-        ::-webkit-scrollbar-thumb{ background:#1e2d45; border-radius:3px; }
-
-        /* Price table row hover */
-        .price-row:hover{ background:rgba(255,255,255,.03); }
-
-        /* Card hover */
-        .feat-card{
-          background:#0d1120; border:1px solid #1e2d45; border-radius:12px; padding:28px 24px;
-          transition:border-color .3s, transform .3s, box-shadow .3s;
-        }
-        .feat-card:hover{ border-color:rgba(0,212,255,.35); transform:translateY(-5px); box-shadow:0 14px 44px rgba(0,0,0,.5); }
-
-        /* Nav link */
-        .nav-lnk{ font-size:13.5px; font-weight:500; color:#8b97b4; transition:color .2s; }
-        .nav-lnk:hover{ color:#fff; }
-
-        /* Btn primary */
-        .btn-p{
-          display:inline-block; padding:12px 28px;
-          background:linear-gradient(135deg,#00b4d8,#0077ff);
-          color:#fff; font-weight:700; font-size:14px; border-radius:6px; cursor:pointer;
-          border:none; font-family:inherit;
-          transition:opacity .2s, transform .2s, box-shadow .2s;
-          box-shadow:0 4px 24px rgba(0,180,216,.35);
-        }
-        .btn-p:hover{ opacity:.88; transform:translateY(-2px); box-shadow:0 8px 32px rgba(0,180,216,.5); }
-
-        /* Btn outline */
-        .btn-o{
-          display:inline-block; padding:10px 24px;
-          border:1.5px solid #4a5568; color:#fff; font-weight:600; font-size:13px;
-          border-radius:6px; cursor:pointer; background:transparent;
-          transition:border-color .2s, background .2s; font-family:inherit;
-        }
-        .btn-o:hover{ border-color:#00d4ff; background:rgba(0,212,255,.06); }
-
-        /* Card-link */
-        .card-lnk{ font-size:13px; font-weight:600; color:#00d4ff; transition:color .2s; }
-        .card-lnk:hover{ color:#fff; }
-
-        /* Trade now */
-        .trade-lnk{ font-size:13px; font-weight:600; color:#00d4ff; white-space:nowrap; transition:color .2s; }
-        .trade-lnk:hover{ color:#fff; }
-
-        /* Email input wrap */
-        .email-wrap{
-          display:flex; max-width:420px; margin:0 auto;
-          border:1.5px solid #1e2d45; border-radius:8px; overflow:hidden;
-          background:#111827; transition:border-color .2s;
-        }
-        .email-wrap:focus-within{ border-color:#00d4ff; }
-        .email-inp{
-          flex:1; padding:14px 16px; background:transparent; border:none; outline:none;
-          color:#fff; font-size:14px; font-family:inherit;
-        }
-        .email-inp::placeholder{ color:#2d3748; }
-        .email-btn{
-          padding:14px 18px; background:linear-gradient(135deg,#00b4d8,#0077ff);
-          border:none; color:#fff; font-size:18px; cursor:pointer;
-          transition:opacity .2s; font-family:inherit;
-        }
-        .email-btn:hover{ opacity:.85; }
-
-        /* Footer email */
-        .foot-email-wrap{
-          display:flex; border:1px solid #1e2d45; border-radius:6px; overflow:hidden;
-          background:#111827; max-width:260px;
-        }
-        .foot-email-inp{
-          flex:1; padding:10px 12px; background:transparent; border:none; outline:none;
-          color:#fff; font-size:13px; font-family:inherit;
-        }
-        .foot-email-inp::placeholder{ color:#2d3748; }
-        .foot-email-btn{
-          padding:10px 14px; background:linear-gradient(135deg,#00b4d8,#0077ff);
-          border:none; color:#fff; cursor:pointer; font-size:16px; transition:opacity .2s;
-        }
-        .foot-email-btn:hover{ opacity:.85; }
-
-        /* mobile nav */
-        .mobile-nav{
-          display:none; flex-direction:column; gap:16px;
-          padding:16px 24px; background:rgba(8,11,18,.98);
-          border-bottom:1px solid #1e2d45;
-          position:absolute; top:60px; left:0; right:0; z-index:99;
-        }
-        .mobile-nav.open{ display:flex; }
-
-        /* grid */
-        .feat-grid{
-          display:grid; grid-template-columns:repeat(3,1fr); gap:20px;
-        }
-        .two-col{
-          display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:60px;
-        }
-        @media(max-width:900px){
-          .feat-grid{ grid-template-columns:1fr; }
-          .two-col{ grid-template-columns:1fr; gap:36px; }
-          .hide-mob{ display:none !important; }
-          .nav-desktop{ display:none !important; }
-          .hamburger-btn{ display:flex !important; }
-        }
-        @media(max-width:600px){
-          .hero-h1{ font-size:36px !important; }
-          .sect-h2{ font-size:26px !important; }
-          .price-tbl td{ padding:12px 8px; font-size:11px; }
-          .chart-col{ display:none; }
-        }
-
-        /* Hamburger */
-        .hamburger-btn{
-          display:none; flex-direction:column; gap:5px;
-          background:none; border:none; cursor:pointer; padding:4px; margin-left:auto;
-        }
-        .hamburger-btn span{
-          display:block; width:22px; height:2px; background:#8b97b4; border-radius:2px;
-          transition:background .2s;
-        }
-        .hamburger-btn:hover span{ background:#fff; }
-
-        /* Learn more */
-        .learn-lnk{ display:inline-block; font-size:14px; font-weight:600; color:#00d4ff; margin-bottom:36px; transition:color .2s; }
-        .learn-lnk:hover{ color:#fff; }
-
-        /* Policy link */
-        .pol-lnk{ color:#00d4ff; font-weight:500; transition:color .2s; }
-        .pol-lnk:hover{ color:#fff; }
-
-        /* Dot */
-        .nl-dot{
-          width:12px; height:12px; background:linear-gradient(135deg,#ff5f9e,#a855f7);
-          border-radius:50%; margin:0 auto 24px;
-          box-shadow:0 0 20px rgba(168,85,247,.6);
-        }
-      `}</style>
-
-      {/* ════ NAVBAR ════ */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        background: scrolled ? 'rgba(8,11,18,.97)' : 'rgba(8,11,18,.85)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(30,45,69,.6)',
-        transition: 'background .3s',
-      }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', gap: 32 }}>
-          {/* Logo */}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <div style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#00b4d8,#0077ff)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16, color: '#fff' }}>P</div>
-            <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '1.5px' }}>PESAFLIP</span>
-          </a>
-
-          {/* Desktop nav */}
-          <nav className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 28, flex: 1 }}>
-            {['Buy / Sell', 'Grow', 'Markets', 'Business', 'Support'].map(l => (
-              <a key={l} href="#" className="nav-lnk">{l}</a>
-            ))}
-          </nav>
-
-          {/* Actions */}
-          <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <button onClick={goAuth} style={{ padding: '7px 18px', fontSize: 13, fontWeight: 600, color: '#8b97b4', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'color .2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#8b97b4')}>
-              Sign in
-            </button>
-            <button onClick={goAuth} className="btn-p" style={{ padding: '7px 18px', fontSize: 13 }}>Sign up</button>
+    <div className="min-h-screen bg-[#07090D] text-gray-200 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+      {/* ─── Top Global Navigation Bar ─── */}
+      <header className="sticky top-0 z-50 bg-[#07090D]/85 backdrop-blur-md border-b border-[#151923]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-black text-black text-sm shadow-sm">
+              P
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base tracking-tight text-white leading-none">
+                Pesa<span className="text-emerald-400">Flip</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-medium tracking-wide">
+                Intelligence Platform
+              </span>
+            </div>
           </div>
 
-          {/* Hamburger */}
-          <button className="hamburger-btn" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-            <span /><span /><span />
-          </button>
-        </div>
+          <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold text-gray-400">
+            <a href="#sports" className="hover:text-emerald-400 transition-colors">Sports Engine</a>
+            <a href="#crypto" className="hover:text-cyan-400 transition-colors">Crypto Analytics</a>
+            <a href="#entertainment" className="hover:text-rose-400 transition-colors">Entertainment</a>
+            <a href="#architecture" className="hover:text-white transition-colors">Architecture</a>
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+          </nav>
 
-        {/* Mobile nav */}
-        <div className={`mobile-nav ${menuOpen ? 'open' : ''}`}>
-          {['Buy / Sell', 'Grow', 'Markets', 'Business', 'Support'].map(l => (
-            <a key={l} href="#" className="nav-lnk">{l}</a>
-          ))}
-          <button onClick={goAuth} className="btn-p" style={{ width: '100%' }}>Sign in / Sign up</button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate('/auth')}
+              className="text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 transition-colors cursor-pointer"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate('/auth')}
+              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ════ HERO ════ */}
-      <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', paddingTop: 60 }}>
-        {/* Glows */}
-        <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 600, height: 500, background: 'radial-gradient(ellipse,rgba(0,180,130,.22) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: 50, right: -80, width: 400, height: 400, background: 'radial-gradient(ellipse,rgba(124,58,237,.55) 0%,rgba(60,0,180,.28) 45%,transparent 75%)', borderRadius: '50%', pointerEvents: 'none', animation: 'float-slow 8s ease-in-out infinite' }} />
+      {/* ─── Hero Section with Real-World Interactive Cards ─── */}
+      <section className="relative pt-16 pb-20 md:pt-24 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="text-center max-w-3xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111622] border border-[#1E2536] text-gray-300 text-xs font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Multi-Domain Consumer Intelligence • Release 2.4</span>
+          </div>
 
-        {/* Grid */}
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,.035) 1px,transparent 1px)', backgroundSize: '36px 36px', pointerEvents: 'none' }} />
-
-        {/* Floating coins */}
-        <div className="hide-mob" style={{ position: 'absolute', right: '7%', top: '50%', transform: 'translateY(-50%)', width: 320, animation: 'float-y 7s ease-in-out infinite', filter: 'drop-shadow(0 0 30px rgba(0,212,255,.18))' }}>
-          <img src="/src/assets/coins.jpg" alt="" style={{ width: '100%', mixBlendMode: 'lighten' }}
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          {/* CSS fallback coins */}
-          <div style={{ position: 'absolute', top: 10, left: -20, width: 70, height: 70, background: 'radial-gradient(circle,#f7931a,#c67214)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: '#fff', boxShadow: '0 0 24px rgba(247,147,26,.5)' }}>₿</div>
-          <div style={{ position: 'absolute', bottom: 20, right: 10, width: 55, height: 55, background: 'radial-gradient(circle,#627eea,#3a4fb5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#fff', boxShadow: '0 0 20px rgba(98,126,234,.5)' }}>Ξ</div>
-          <div style={{ position: 'absolute', top: '40%', right: -10, width: 42, height: 42, background: 'radial-gradient(circle,#00b4d8,#0055aa)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', boxShadow: '0 0 16px rgba(0,180,216,.5)' }}>◎</div>
-        </div>
-
-        {/* Sparkles */}
-        <Sparkle className="" char="✦" style={{ top: '15%', left: '7%', fontSize: 22, animationDelay: '0s' } as React.CSSProperties} />
-        <Sparkle char="✦" style={{ top: '28%', left: '40%', fontSize: 14, animationDelay: '.8s' } as React.CSSProperties} />
-        <Sparkle char="✦" style={{ top: '65%', left: '12%', fontSize: 18, animationDelay: '1.5s' } as React.CSSProperties} />
-        <Sparkle char="+" style={{ top: '18%', right: '32%', fontSize: 26, opacity: .4, animationDelay: '2s', color: '#fff' } as React.CSSProperties} />
-        <Sparkle char="✦" style={{ bottom: '20%', right: '20%', fontSize: 16, animationDelay: '.4s' } as React.CSSProperties} />
-
-        {/* Content */}
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 620, padding: '0 24px' }}>
-          <h1 className="hero-h1" style={{ fontSize: 'clamp(40px,6vw,72px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: -1.5, marginBottom: 20 }}>
-            We make crypto<br />clear and simple
+          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.12]">
+            One platform for live sports AI, crypto analytics, and media discovery.
           </h1>
-          <p style={{ fontSize: 15, color: '#8b97b4', marginBottom: 32, lineHeight: 1.7 }}>
-            Buy, sell, and grow your crypto with PesaFlip, the platform dedicated<br className="hide-mob" /> to every trader at every level.
-          </p>
-          <button onClick={goAuth} className="btn-p">Get Started</button>
-        </div>
-      </section>
 
-      {/* ════ FEATURE CARDS ════ */}
-      <section style={{ padding: '60px 0 80px' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px' }}>
-          <div ref={featRef} className="fade-sect feat-grid">
-            {[
-              { icon: '⇄', color: '#00d1ff', title: 'Trade Desk',       link: 'Get Started',      sub: 'Invest in crypto anytime, anywhere with our safe, secure, and easy to use online platform.' },
-              { icon: '🖥',  color: '#a855f7', title: 'PesaFlip ATMs',   link: 'Find an ATM',       sub: 'We have thousands of ATMs located across the country where you can easily convert cash to crypto.' },
-              { icon: '💼',  color: '#0ecb81', title: 'PesaFlip Wallet', link: 'Download the App', sub: 'Store your growing investments in our non-custodial wallet that gives you access to a full suite of DeFi services in one place.' },
-            ].map((c, i) => (
-              <article key={i} className="feat-card" style={{ transitionDelay: `${i * .12}s` }}>
-                <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,.05)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, fontSize: 22 }}>{c.icon}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{c.title}</h3>
-                <p style={{ fontSize: 13.5, color: '#8b97b4', lineHeight: 1.65, marginBottom: 20 }}>{c.sub}</p>
-                <button onClick={goAuth} className="card-lnk" style={{ background: 'none', border: 'none', fontFamily: 'inherit', padding: 0 }}>{c.link} →</button>
-              </article>
-            ))}
+          <p className="text-base sm:text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
+            Stop switching between fragmented apps. PesaFlip unites real-time match forecasting, non-custodial crypto market tracking, and authorized streaming guides in one coherent interface.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => navigate('/auth')}
+              className="w-full sm:w-auto px-7 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              <span>Explore Platform Free</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => navigate('/auth')}
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#121620] hover:bg-[#181E2C] border border-[#202738] text-gray-300 font-semibold text-sm transition-all cursor-pointer"
+            >
+              Live Demo Access
+            </button>
+          </div>
+
+          <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400">
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Real-time Match Telemetry</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-cyan-400" /> Non-Custodial Market Data</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-rose-400" /> Authorized Streaming Providers</span>
           </div>
         </div>
-      </section>
 
-      {/* ════ INVESTMENT PLATFORM ════ */}
-      <section style={{ position: 'relative', padding: '100px 0', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', bottom: -80, left: '50%', transform: 'translateX(-50%)', width: 700, height: 400, background: 'radial-gradient(ellipse,rgba(0,100,80,.16) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div ref={investRef} className="fade-sect" style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-          <h2 className="sect-h2" style={{ fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.8, marginBottom: 18 }}>
-            A crypto investment platform<br />that invests in you
-          </h2>
-          <p style={{ fontSize: 14.5, color: '#8b97b4', marginBottom: 32, lineHeight: 1.7 }}>
-            We invest more resources than any other platform in making sure great<br className="hide-mob" /> support from real people is a click away, whenever you need it.
-          </p>
-          <button onClick={goAuth} className="btn-p">Get Started</button>
-        </div>
-        <Sparkle char="✦" style={{ top: '20%', right: '10%', fontSize: 24, animationDelay: '1s' } as React.CSSProperties} />
-        <Sparkle char="✦" style={{ bottom: '15%', left: '8%', fontSize: 16, animationDelay: '.3s' } as React.CSSProperties} />
-      </section>
-
-      {/* ════ 24/7 SUPPORT ════ */}
-      <section style={{ position: 'relative', padding: '80px 0', overflow: 'hidden', background: 'linear-gradient(180deg,rgba(20,5,40,.55) 0%,rgba(8,11,18,0) 100%)' }}>
-        <div style={{ position: 'absolute', bottom: -50, left: -80, width: 500, height: 400, background: 'radial-gradient(ellipse,rgba(200,80,0,.1) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div ref={supportRef} className="fade-sect two-col" style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px' }}>
-          {/* Shield illustration */}
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <div style={{ position: 'relative', width: 260, height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'float-slow 7s ease-in-out infinite' }}>
-              <div style={{ width: 200, height: 220, background: 'linear-gradient(145deg,#ff8c00,#e65c00)', clipPath: 'polygon(50% 0%,100% 20%,100% 70%,50% 100%,0% 70%,0% 20%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 60px rgba(200,80,0,.5)', fontSize: 72, color: 'rgba(255,255,255,.3)' }}>$</div>
-              <Sparkle char="✦" style={{ top: 20, right: 20, fontSize: 20, animationDelay: '.7s' } as React.CSSProperties} />
+        {/* ─── Hero Visual: Interactive Mini Previews ─── */}
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-6xl mx-auto">
+          {/* Sports Live Card */}
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-5 space-y-3">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-2 border-b border-[#161B26]">
+              <span className="font-semibold text-white">Premier League</span>
+              <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-bold text-[10px] border border-red-500/20">
+                LIVE 68'
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-bold text-white">
+              <span>Manchester City</span>
+              <span className="text-emerald-400 text-base">2</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-bold text-white">
+              <span>Arsenal</span>
+              <span className="text-gray-400 text-base">1</span>
+            </div>
+            <div className="pt-2 border-t border-[#161B26] flex items-center justify-between text-[11px]">
+              <span className="text-gray-400">AI Win Probability</span>
+              <span className="font-bold text-emerald-400">Man City (61%)</span>
             </div>
           </div>
-          {/* Text */}
-          <div>
-            <h2 className="sect-h2" style={{ fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, lineHeight: 1.25, letterSpacing: -0.5, marginBottom: 18 }}>
-              24/7 access to full<br />service customer<br />support
-            </h2>
-            <p style={{ fontSize: 14, color: '#8b97b4', marginBottom: 28, lineHeight: 1.7 }}>
-              We invest more resources than any other platform in making sure great support from real people is a click away, whenever you need it.
-            </p>
-            <button onClick={goAuth} className="btn-o">Get Started</button>
-          </div>
-        </div>
-      </section>
 
-      {/* ════ PRICE TABLE ════ */}
-      <section style={{ position: 'relative', padding: '100px 0 80px', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 800, height: 300, background: 'radial-gradient(ellipse,rgba(0,50,150,.18) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div ref={priceRef} className="fade-sect" style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-          <h2 className="sect-h2" style={{ fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.8, marginBottom: 18 }}>
-            Buy and sell with the lowest<br />fees in the industry
-          </h2>
-          <p style={{ fontSize: 14.5, color: '#8b97b4', marginBottom: 12, lineHeight: 1.7 }}>
-            Buy and sell 150+ cryptocurrencies with 20+ fiat currencies using bank<br className="hide-mob" /> transfers or your credit/debit card.
-          </p>
-          <a href="#" className="learn-lnk">Learn More →</a>
-
-          <div style={{ background: '#0d1120', border: '1px solid #1e2d45', borderRadius: 12, overflow: 'hidden' }}>
-            <table className="price-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {PRICES.map((row, i) => (
-                  <tr key={i} className="price-row" style={{ borderBottom: i < PRICES.length - 1 ? '1px solid #1e2d45' : 'none' }}>
-                    <td style={{ padding: '18px 20px', fontWeight: 600, fontSize: 14, textAlign: 'left', whiteSpace: 'nowrap' }}>{row.name}</td>
-                    <td style={{ padding: '18px 8px', fontWeight: 700, fontSize: 13, color: TICKER_COLORS[row.ticker] || '#fff', whiteSpace: 'nowrap' }}>{row.ticker}</td>
-                    <td style={{ padding: '18px 8px', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap' }}>{row.price}</td>
-                    <td style={{ padding: '18px 8px', fontWeight: 700, fontSize: 13.5, color: row.pos ? '#0ecb81' : '#f6465d', whiteSpace: 'nowrap' }}>{row.change}</td>
-                    <td className="chart-col" style={{ padding: '18px 12px', width: 100 }}>
-                      <svg viewBox="0 0 80 30" style={{ width: 100, height: 36, display: 'block' }}>
-                        <polyline points={row.points} stroke={row.pos ? '#0ecb81' : '#f6465d'} strokeWidth="1.5" fill="none" />
-                      </svg>
-                    </td>
-                    <td style={{ padding: '18px 20px', whiteSpace: 'nowrap' }}>
-                      <button onClick={goAuth} className="trade-lnk" style={{ background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>Trade Now →</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* ════ SAFE INVESTING ════ */}
-      <section style={{ position: 'relative', padding: '80px 0 100px', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, right: -80, width: 500, height: 500, background: 'radial-gradient(ellipse,rgba(80,0,200,.13) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div ref={safeRef} className="fade-sect two-col" style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px' }}>
-          {/* Text */}
-          <div>
-            <h2 className="sect-h2" style={{ fontSize: 'clamp(26px,3.5vw,42px)', fontWeight: 800, lineHeight: 1.25, letterSpacing: -0.5, marginBottom: 18 }}>
-              Take your first step<br />into safe, secure<br />crypto investing
-            </h2>
-            <p style={{ fontSize: 14, color: '#8b97b4', marginBottom: 28, lineHeight: 1.7, maxWidth: 380 }}>
-              Seamlessly manage and grow your digital asset portfolio with institutional-grade security tools designed to protect every transaction.
-            </p>
-            <button onClick={goAuth} className="btn-p">Get Started</button>
-          </div>
-          {/* Briefcase illustration */}
-          <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-            <div style={{ position: 'relative', animation: 'float-slow 8s ease-in-out infinite', animationDelay: '1s' }}>
-              <div style={{ width: 240, height: 200, background: 'linear-gradient(145deg,#00d4ff,#0055ff)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 60px rgba(0,100,255,.4)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', width: 60, height: 24, background: 'rgba(0,0,0,.3)', borderRadius: '0 0 8px 8px' }} />
-                <div style={{ fontSize: 64, opacity: .4 }}>💼</div>
+          {/* Crypto Ticker Card */}
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-5 space-y-3">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-2 border-b border-[#161B26]">
+              <span className="font-semibold text-white">Market Asset</span>
+              <span className="text-cyan-400 font-bold text-[10px]">Rank #1</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-white">Bitcoin (BTC)</div>
+                <div className="text-xs text-gray-400">$68,450.20</div>
               </div>
-              <Sparkle char="✦" style={{ top: -10, left: 10, fontSize: 20, animationDelay: '.5s' } as React.CSSProperties} />
-              <Sparkle char="+" style={{ bottom: 20, right: -10, fontSize: 28, color: '#00d4ff', opacity: .35, animationDelay: '1.2s' } as React.CSSProperties} />
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                +2.45% 24h
+              </span>
+            </div>
+            <div className="h-6 flex items-end gap-1">
+              {[40, 55, 45, 65, 60, 80, 75, 90, 85, 100].map((h, i) => (
+                <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-cyan-500/30 rounded-t" />
+              ))}
+            </div>
+            <div className="pt-2 border-t border-[#161B26] flex items-center justify-between text-[11px]">
+              <span className="text-gray-400">Market Dominance</span>
+              <span className="font-bold text-white">56.2%</span>
+            </div>
+          </div>
+
+          {/* Media Discovery Card */}
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-5 space-y-3">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-2 border-b border-[#161B26]">
+              <span className="font-semibold text-white">Trending Movie</span>
+              <span className="text-amber-400 font-bold text-[10px]">★ 8.2</span>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white truncate">Project Hail Mary (2026)</div>
+              <div className="text-xs text-gray-400">Sci-Fi • Adventure • Ryan Gosling</div>
+            </div>
+            <div className="pt-3 border-t border-[#161B26] flex items-center justify-between text-[11px]">
+              <span className="text-gray-400">Legal Streaming</span>
+              <span className="font-bold text-rose-400">Prime Video • Apple TV+</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ════ NEWSLETTER ════ */}
-      <section style={{ position: 'relative', padding: '90px 0', overflow: 'hidden', borderTop: '1px solid #1e2d45', borderBottom: '1px solid #1e2d45' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 0%,rgba(0,80,200,.14) 0%,transparent 60%)', pointerEvents: 'none' }} />
-        <div ref={newsRef} className="fade-sect" style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-          <div className="nl-dot" />
-          <h2 className="sect-h2" style={{ fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: -0.8, marginBottom: 12 }}>Receive transmissions</h2>
-          <p style={{ fontSize: 14.5, color: '#8b97b4', marginBottom: 28, lineHeight: 1.7 }}>
-            Unsubscribe at any time. <a href="#" className="pol-lnk">Privacy policy ↗</a>
+      {/* ─── Metric Strip / Platform Proof ─── */}
+      <section className="border-y border-[#151923] bg-[#0A0D13] py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-white">8+</div>
+            <div className="text-xs text-gray-400 mt-1">Supported Football Leagues</div>
+          </div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">Poisson 2.1</div>
+            <div className="text-xs text-gray-400 mt-1">Mathematical AI Engine</div>
+          </div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-cyan-400">$1.34T+</div>
+            <div className="text-xs text-gray-400 mt-1">Tracked Crypto Market Cap</div>
+          </div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-black text-rose-400">100% Legal</div>
+            <div className="text-xs text-gray-400 mt-1">Authorized Streaming Links</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── SECTION 1: SPORTS INTELLIGENCE DEEP DIVE ─── */}
+      <section id="sports" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-widest">
+              <Trophy className="w-4 h-4" />
+              <span>Sports Match Centre</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              Calibrated match predictions backed by statistical models.
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              We model expected goal distributions (xG) using bivariate Poisson equations combined with rolling form metrics, home ground advantage, and historical head-to-head records.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              {[
+                { title: 'Multi-Market Forecasts', desc: '1X2 outcomes, Double Chance (1X, 12, X2), Over/Under 1.5 & 2.5 goals, BTTS, and Half-Time results.' },
+                { title: 'Confidence Classifications', desc: 'Categorized into High, Medium, and Low confidence with explicit supporting statistical rationale.' },
+                { title: 'Global & Regional Coverage', desc: 'Premier League, La Liga, Serie A, Bundesliga, Ligue 1, UEFA Champions League, and the Kenyan Premier League.' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-3 text-xs">
+                  <div className="w-5 h-5 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">{item.title}</span>
+                    <span className="text-gray-400 leading-normal">{item.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-3 border-b border-[#161B26]">
+              <span className="font-bold text-white">AI Prediction Breakdown</span>
+              <span className="text-emerald-400 font-semibold">Engine Version 2.1</span>
+            </div>
+            <div className="p-4 rounded-xl bg-[#111622] border border-[#1D2433] space-y-2">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-white">Home Win: 61%</span>
+                <span className="text-gray-400">Draw: 22%</span>
+                <span className="text-white">Away Win: 17%</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#1A202C] flex overflow-hidden">
+                <div style={{ width: '61%' }} className="bg-emerald-500 h-full" />
+                <div style={{ width: '22%' }} className="bg-amber-500 h-full" />
+                <div style={{ width: '17%' }} className="bg-cyan-500 h-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-lg bg-[#111622] border border-[#1D2433]">
+                <div className="text-gray-400 text-[11px]">Over 1.5 Goals</div>
+                <div className="text-sm font-bold text-emerald-400 mt-0.5">84.2% (High)</div>
+              </div>
+              <div className="p-3 rounded-lg bg-[#111622] border border-[#1D2433]">
+                <div className="text-gray-400 text-[11px]">Both Teams to Score</div>
+                <div className="text-sm font-bold text-cyan-400 mt-0.5">58.0% (Medium)</div>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-500 italic">
+              Disclaimers included: Sports outcomes involve inherent variance and predictions do not represent guarantees.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── SECTION 2: CRYPTO MARKET INTELLIGENCE ─── */}
+      <section id="crypto" className="py-20 border-t border-[#151923] bg-[#090C11] px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-6 space-y-4 shadow-xl order-2 lg:order-1">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-3 border-b border-[#161B26]">
+              <span className="font-bold text-white">BTC/USD Multi-Timeframe</span>
+              <div className="flex gap-1 text-[10px] font-bold">
+                <span className="px-1.5 py-0.5 rounded bg-cyan-500 text-black">7D</span>
+                <span className="px-1.5 py-0.5 rounded bg-[#161B26] text-gray-400">30D</span>
+                <span className="px-1.5 py-0.5 rounded bg-[#161B26] text-gray-400">1Y</span>
+              </div>
+            </div>
+            <div className="h-40 flex items-center justify-center bg-[#07090E] rounded-xl border border-[#141824] p-3">
+              <svg className="w-full h-full" viewBox="0 0 300 100">
+                <path
+                  d="M 0,80 Q 50,40 100,60 T 200,30 T 300,10"
+                  fill="none"
+                  stroke="#06B6D4"
+                  strokeWidth="2.5"
+                />
+              </svg>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-lg bg-[#111622] border border-[#1D2433]">
+                <div className="text-[10px] text-gray-400">Market Cap</div>
+                <div className="font-bold text-white mt-0.5">$1.34T</div>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#111622] border border-[#1D2433]">
+                <div className="text-[10px] text-gray-400">Circulating</div>
+                <div className="font-bold text-white mt-0.5">19.78M BTC</div>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#111622] border border-[#1D2433]">
+                <div className="text-[10px] text-gray-400">All-Time High</div>
+                <div className="font-bold text-white mt-0.5">$73,750</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 order-1 lg:order-2">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-cyan-400 uppercase tracking-widest">
+              <LineChart className="w-4 h-4" />
+              <span>Crypto Intelligence</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              Pure market tracking without broker or exchange bloat.
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              No order books, trade execution slips, or deposit forms. We deliver pure market capitalization, Bitcoin dominance, 24h volume tracking, and interactive price charts across multiple timeframes.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              {[
+                { title: 'Interactive Multi-Timeframe Charts', desc: 'Switch instantly between 1 hour, 24 hours, 7 days, 30 days, 90 days, 1 year, and all-time.' },
+                { title: 'Non-Custodial Transparency', desc: 'Track assets like BTC, ETH, SOL, XRP, and ADA without signing custody agreements or KYC.' },
+                { title: 'Personalized Watchlists', desc: 'Pin your favorite cryptocurrencies to monitor 24h price movements at a glance.' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-3 text-xs">
+                  <div className="w-5 h-5 rounded bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">{item.title}</span>
+                    <span className="text-gray-400 leading-normal">{item.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── SECTION 3: ENTERTAINMENT DISCOVERY DEEP DIVE ─── */}
+      <section id="entertainment" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-rose-400 uppercase tracking-widest">
+              <Film className="w-4 h-4" />
+              <span>Cinematic Media Discovery</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              Discover what to watch and where to stream legally.
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Find trending theatrical movies, top-rated television shows, director credits, cast biographies, and official trailers, accompanied by direct legal streaming availability.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              {[
+                { title: 'Zero Piracy or Copyright Infringement', desc: 'PesaFlip directs you straight to authorized streaming providers (Netflix, Prime Video, Disney+, Apple TV+, Showmax).' },
+                { title: 'Comprehensive Metadata', desc: 'Ratings, synopses, runtimes, cast, and similar title recommendations.' },
+                { title: 'Cinematic Visual Layout', desc: 'Full-bleed backdrops and poster carousels tailored for media discovery.' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-3 text-xs">
+                  <div className="w-5 h-5 rounded bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">{item.title}</span>
+                    <span className="text-gray-400 leading-normal">{item.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#0D1017] border border-[#1A202C] p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between text-xs text-gray-400 pb-3 border-b border-[#161B26]">
+              <span className="font-bold text-white">Streaming Availability Hub</span>
+              <span className="text-rose-400 font-semibold">Verified Providers</span>
+            </div>
+            <div className="space-y-2">
+              {[
+                { name: 'Netflix', status: 'Subscription', region: 'Global' },
+                { name: 'Prime Video', status: 'Included with Prime', region: 'Global' },
+                { name: 'Disney+', status: 'Subscription', region: 'Selected Markets' },
+                { name: 'Apple TV+', status: 'Rent or Buy 4K', region: 'Global' },
+              ].map((prov, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-[#111622] border border-[#1D2433] text-xs">
+                  <span className="font-bold text-white">{prov.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400">{prov.status}</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── SECTION 4: UNIFIED ARCHITECTURE & OMNI-SEARCH ─── */}
+      <section id="architecture" className="py-20 border-t border-[#151923] bg-[#0A0D13] px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center space-y-4 mb-12">
+          <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">
+            Unified Shared Core
+          </span>
+          <h2 className="text-3xl font-black text-white">How the Three Domains Communicate</h2>
+          <p className="text-sm text-gray-400 max-w-2xl mx-auto">
+            Each domain maintains dedicated services and data models on the backend, linked through our global search gateway and cross-domain AI briefing layer.
           </p>
-          {subscribed ? (
-            <div style={{ maxWidth: 420, margin: '0 auto', padding: '14px 20px', background: 'rgba(14,203,129,.1)', border: '1px solid rgba(14,203,129,.3)', borderRadius: 8, color: '#0ecb81', fontWeight: 600, fontSize: 14 }}>
-              ✓ You're subscribed! Welcome to PesaFlip.
-            </div>
-          ) : (
-            <form onSubmit={handleSubscribe} className="email-wrap" style={{ maxWidth: 420, margin: '0 auto' }}>
-              <input type="email" placeholder="Email Address" className="email-inp" value={email} onChange={e => setEmail(e.target.value)} required />
-              <button type="submit" className="email-btn">→</button>
-            </form>
-          )}
+        </div>
+
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-2xl bg-[#0D1017] border border-[#1A202C] space-y-3">
+            <Search className="w-5 h-5 text-emerald-400" />
+            <h4 className="text-base font-bold text-white">Global Omni-Search</h4>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Press ⌘K anywhere. Searching for "Arsenal" returns fixtures and xG stats; searching "Solana" gives price charts; searching "Avatar" shows streaming availability.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl bg-[#0D1017] border border-[#1A202C] space-y-3">
+            <Sparkles className="w-5 h-5 text-indigo-400" />
+            <h4 className="text-base font-bold text-white">AI Cross-Domain Briefs</h4>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Contextual AI summaries highlight key match edges, network volume movements, and audience anticipation scores without fabricated stats.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl bg-[#0D1017] border border-[#1A202C] space-y-3">
+            <Shield className="w-5 h-5 text-cyan-400" />
+            <h4 className="text-base font-bold text-white">Decoupled Architecture</h4>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Built on clean modular services. Adding new leagues, market aggregators, or metadata providers does not require rebuilding frontend components.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ════ FOOTER ════ */}
-      <footer style={{ position: 'relative', padding: '60px 0 40px', background: 'linear-gradient(180deg,rgba(5,10,20,0) 0%,#030508 100%)', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, background: 'radial-gradient(ellipse at 20% 100%,rgba(0,80,50,.18) 0%,transparent 60%)', pointerEvents: 'none' }} />
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 24px', display: 'grid', gridTemplateColumns: '1.6fr 1fr 1.8fr', gap: 48 }}>
-          {/* Brand */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 24, height: 24, background: 'linear-gradient(135deg,#00b4d8,#0077ff)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: '#fff' }}>P</div>
-              <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '1.5px' }}>PESAFLIP</span>
+      {/* ─── SECTION 5: FREQUENTLY ASKED QUESTIONS (FAQ) ─── */}
+      <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full space-y-8">
+        <div className="text-center space-y-3">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">FAQ</span>
+          <h2 className="text-3xl font-black text-white">Frequently Asked Questions</h2>
+          <p className="text-sm text-gray-400">Everything you need to know about the platform.</p>
+        </div>
+
+        <div className="space-y-3">
+          {faqs.map((faq, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl bg-[#0D1017] border border-[#1A202C] overflow-hidden transition-colors"
+            >
+              <button
+                type="button"
+                onClick={() => toggleFaq(idx)}
+                className="w-full p-4 text-left flex items-center justify-between text-sm font-bold text-white cursor-pointer hover:text-emerald-400 transition-colors"
+              >
+                <span>{faq.q}</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                    activeFaq === idx ? 'rotate-180 text-emerald-400' : ''
+                  }`}
+                />
+              </button>
+              {activeFaq === idx && (
+                <div className="px-4 pb-4 text-xs text-gray-400 leading-relaxed border-t border-[#141824] pt-3">
+                  {faq.a}
+                </div>
+              )}
             </div>
-            <p style={{ fontSize: 13, color: '#8b97b4', lineHeight: 1.65, marginBottom: 12, maxWidth: 280 }}>PesaFlip, the world's leading bitcoin platform, makes it easy to buy and sell bitcoin via cash, card, or bank transfer.</p>
-            <p style={{ fontSize: 12.5, color: '#8b97b4', marginBottom: 14 }}>Sign up to get the latest in PesaFlip news, discounts, and more.</p>
-            <form onSubmit={handleSubscribe} className="foot-email-wrap">
-              <input type="email" placeholder="Email Address" className="foot-email-inp" value={email} onChange={e => setEmail(e.target.value)} />
-              <button type="submit" className="foot-email-btn">→</button>
-            </form>
-            <p style={{ fontSize: 11.5, color: '#2d3748', marginTop: 16 }}>© 2025 PFA Holdings, LLC PesaFlip</p>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Final CTA Banner ─── */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto rounded-3xl bg-gradient-to-r from-emerald-950/40 via-[#0E131C] to-[#0A0D14] border border-emerald-900/30 p-8 sm:p-12 text-center space-y-5 shadow-2xl">
+          <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Ready to experience PesaFlip?
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-400 max-w-xl mx-auto">
+            Sign in now to access the live Match Centre, interactive cryptocurrency market charts, and movie discovery feeds.
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => navigate('/auth')}
+              className="px-8 py-3.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm inline-flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              <span>Get Started Now</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Modern Platform Footer ─── */}
+      <footer className="mt-auto border-t border-[#151923] bg-[#06080C] px-6 py-8 text-xs text-gray-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <span className="font-bold text-gray-300">PesaFlip Intelligence</span>
+            <span>•</span>
+            <span>Sports Match Centre</span>
+            <span>•</span>
+            <span>Crypto Markets</span>
+            <span>•</span>
+            <span>Media Discovery</span>
           </div>
 
-          {/* Company */}
-          <div>
-            <h4 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#8b97b4', marginBottom: 14 }}>Company</h4>
-            <ul style={{ listStyle: 'none' }}>
-              {['About', 'Careers', 'News', 'Merch'].map(l => (
-                <li key={l} style={{ marginBottom: 10 }}>
-                  <a href="#" style={{ fontSize: 13, color: '#8b97b4', transition: 'color .2s' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#8b97b4')}>{l}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: 'transparent', marginBottom: 14 }}>—</h4>
-            <ul style={{ listStyle: 'none' }}>
-              {['Privacy Policy and Terms of Service', 'PesaFlip Privacy Policy', 'PesaFlip Biometrics Privacy Policy', 'PesaFlip Financial Privacy Notice', 'PesaFlip Terms of Service', 'PesaFlip Trade Desk Terms of Service'].map(l => (
-                <li key={l} style={{ marginBottom: 10 }}>
-                  <a href="#" style={{ fontSize: 13, color: '#8b97b4', transition: 'color .2s' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#8b97b4')}>{l}</a>
-                </li>
-              ))}
-            </ul>
+          <div className="flex items-center space-x-5">
+            <a href="#sports" className="hover:text-gray-300">Sports</a>
+            <a href="#crypto" className="hover:text-gray-300">Crypto</a>
+            <a href="#entertainment" className="hover:text-gray-300">Entertainment</a>
+            <span
+              className="cursor-pointer text-emerald-400 font-semibold hover:underline"
+              onClick={() => navigate('/auth')}
+            >
+              Sign In
+            </span>
           </div>
         </div>
       </footer>
-
     </div>
   );
 };
-
-export default LandingPage;

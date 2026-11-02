@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, ArrowRight, UserPlus, KeyRound } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+  
+} from 'lucide-react';
 
 interface AuthGatewayProps {
   onAuthSuccess: (session: { token: string; user: any; wallet: any }) => void;
@@ -13,6 +21,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const validateForm = (): boolean => {
     setErrorMessage(null);
@@ -34,7 +43,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       return false;
     }
     if (mode === 'REGISTER' && password !== confirmPassword) {
-      setErrorMessage('Password confirmation does not match.');
+      setErrorMessage('Passwords do not match.');
       return false;
     }
     return true;
@@ -71,7 +80,6 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
         return;
       }
 
-      // Successful auth
       onAuthSuccess({
         token: data.access_token,
         user: {
@@ -79,206 +87,144 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           email: data.email,
           created_at: data.created_at || new Date().toISOString(),
         },
-        wallet: data.wallet || {
-          id: '00000000-0000-0000-0000-000000000000',
-          currency: 'USD',
-          balance: 1000.0,
-        },
+        wallet: data.wallet || { id: 'wallet_main', balance: 0 },
       });
     } catch {
-      setErrorMessage('Network connection failure. Unable to reach the settlement engine backend.');
+      setErrorMessage('Unable to reach auth server. Please check your network connection.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuickSeedLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('Password123!');
-    setErrorMessage(null);
-  };
-
   return (
-    <div className="min-h-screen bg-[#181A20] text-[#EAECEF] flex flex-col justify-center items-center p-4 antialiased selection:bg-[#F0B90B] selection:text-[#0B0E11] relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[300px] bg-[#F0B90B]/5 blur-[140px] pointer-events-none rounded-full" />
+    <div className="py-12 md:py-16 flex items-center justify-center">
+      <div className="w-full max-w-md space-y-4">
+        {/* Prominent Back to Landing Page Button */}
+        <div className="flex items-center justify-between px-1">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141822] hover:bg-[#1C2230] border border-[#232A3B] hover:border-emerald-500/40 text-xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer shadow-md group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Binance Exchange Card Container */}
-        <div className="bg-[#1E2329] border border-[#2B313A] rounded-xl shadow-2xl overflow-hidden">
+          <span className="text-[11px] text-gray-500 font-medium">PesaFlip Platform</span>
+        </div>
+
+        {/* Brand Auth Card */}
+        <div className="rounded-3xl bg-[#12151D] border border-[#202636] p-7 md:p-8 shadow-2xl space-y-6">
           {/* Header */}
-          <div className="p-6 pb-4 border-b border-[#2B313A] bg-[#181A20]/80">
-            <div className="flex items-center space-x-3 mb-1.5">
-              <div className="w-9 h-9 rounded bg-[#F0B90B] flex items-center justify-center font-extrabold text-[#0B0E11] text-lg shadow-sm">
-                <span>P</span>
-              </div>
-              <div>
-                <h1 className="text-base font-bold text-[#EAECEF] tracking-tight">
-                  Pesa<span className="text-[#F0B90B]">Flip</span> Portal
-                </h1>
-                <p className="text-[12px] text-[#848E9C]">
-                  Institutional Exchange &amp; Concurrency Ledger
-                </p>
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-cyan-500 to-indigo-500 p-[1.5px] shadow-lg shadow-emerald-500/20 mx-auto">
+              <div className="w-full h-full bg-[#0D0F12] rounded-[14px] flex items-center justify-center font-black text-white text-xl">
+                P
               </div>
             </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              {mode === 'LOGIN' ? 'Welcome to PesaFlip' : 'Create Your Account'}
+            </h2>
+            <p className="text-xs text-gray-400">
+              Sign in to customize your sports, market, and entertainment feeds.
+            </p>
           </div>
 
-          <div className="p-6">
-            {/* Mode Selector Tabs */}
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#181A20] rounded border border-[#2B313A] mb-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('LOGIN');
-                  setErrorMessage(null);
-                }}
-                className={`py-2 text-xs font-bold rounded transition-all cursor-pointer ${
-                  mode === 'LOGIN'
-                    ? 'bg-[#2B313A] text-[#F0B90B] shadow-sm'
-                    : 'text-[#848E9C] hover:text-[#EAECEF]'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('REGISTER');
-                  setErrorMessage(null);
-                }}
-                className={`py-2 text-xs font-bold rounded transition-all cursor-pointer ${
-                  mode === 'REGISTER'
-                    ? 'bg-[#2B313A] text-[#F0B90B] shadow-sm'
-                    : 'text-[#848E9C] hover:text-[#EAECEF]'
-                }`}
-              >
-                Create Account
-              </button>
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 p-1 rounded-xl bg-[#0B0D12] border border-[#1C212E]">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('LOGIN');
+                setErrorMessage(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mode === 'LOGIN'
+                  ? 'bg-[#1C2230] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('REGISTER');
+                setErrorMessage(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mode === 'REGISTER'
+                  ? 'bg-[#1C2230] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+
+          {/* Error Message Alert */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-300">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-3" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B0D12] border border-[#202534] focus:border-emerald-500 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                />
+              </div>
             </div>
 
-            {/* Error Alert */}
-            {errorMessage && (
-              <div className="mb-4 p-3 rounded bg-[#F6465D]/10 border border-[#F6465D]/40 text-[#F6465D] text-xs flex items-start space-x-2.5">
-                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-[#F6465D]" />
-                <div className="text-[12px] leading-relaxed break-all font-medium">
-                  <span className="font-bold mr-1">Error:</span>
-                  {errorMessage}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-300">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B0D12] border border-[#202534] focus:border-emerald-500 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            {mode === 'REGISTER' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-300">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B0D12] border border-[#202534] focus:border-emerald-500 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                  />
                 </div>
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center space-x-1.5">
-                    <Mail className="w-3.5 h-3.5 text-[#F0B90B]" />
-                    <span>Email Address</span>
-                  </span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="user@pesaflip.io"
-                  className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center space-x-1.5">
-                    <Lock className="w-3.5 h-3.5 text-[#F0B90B]" />
-                    <span>Password</span>
-                  </span>
-                  <span className="text-[10px] text-[#848E9C] font-mono">Bcrypt Enforced</span>
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
-                />
-              </div>
-
-              {mode === 'REGISTER' && (
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#848E9C] mb-1.5 flex items-center space-x-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-[#F0B90B]" />
-                    <span>Confirm Password</span>
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full bg-[#181A20] border border-[#2B313A] rounded focus:border-[#F0B90B] focus:outline-none p-2.5 text-xs text-[#EAECEF] transition-all placeholder:text-[#474D57] font-mono"
-                  />
-                </div>
-              )}
-
-              {mode === 'REGISTER' && (
-                <div className="p-3 rounded border border-[#2B313A] bg-[#181A20] text-[11px] text-[#848E9C] space-y-1">
-                  <div className="text-[#0ECB81] font-bold">Seed Balance Guarantee:</div>
-                  <div>Default wallet will be provisioned with <span className="text-[#EAECEF] font-bold font-mono">$1,000.00 USD</span> liquid collateral.</div>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-2 py-3 rounded bg-[#F0B90B] hover:bg-[#FCD535] text-[#0B0E11] text-xs font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
-              >
-                {isLoading ? (
-                  <span className="animate-pulse">Authorizing Session...</span>
-                ) : mode === 'LOGIN' ? (
-                  <>
-                    <span>Log In to Wallet</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    <span>Create Wallet Account</span>
-                    <UserPlus className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Quick Demo Identities */}
-            <div className="mt-5 pt-4 border-t border-[#2B313A]">
-              <div className="text-[11px] font-semibold text-[#848E9C] uppercase mb-2 flex items-center justify-between">
-                <span>Demo Trading Accounts</span>
-                <span className="text-[#F0B90B] text-[10px]">Click to fill</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  'agent.smith@pesaflip.io',
-                  'operator.neo@pesaflip.io',
-                  'trinity.cipher@pesaflip.io',
-                  'morpheus.root@pesaflip.io',
-                ].map((demo) => (
-                  <button
-                    key={demo}
-                    type="button"
-                    onClick={() => handleQuickSeedLogin(demo)}
-                    className="p-2 rounded bg-[#181A20] border border-[#2B313A] hover:border-[#F0B90B] text-left truncate transition-all text-[#848E9C] hover:text-[#F0B90B] font-mono text-[11px] cursor-pointer"
-                  >
-                    {demo}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sub-footer */}
-        <div className="mt-4 text-center text-[11px] text-[#848E9C]">
-          PesaFlip Exchange • 2FA Protected • Strict Serializable Row-Locks
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+            >
+              <span>{isLoading ? 'Authenticating...' : mode === 'LOGIN' ? 'Sign In' : 'Create Free Account'}</span>
+              {!isLoading && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@ import {
   Film,
   Compass,
   Search,
-  Sparkles,
+  Sparkles, 
   LogOut,
   Menu,
   X,
@@ -34,6 +34,7 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
     { label: 'Crypto', path: '/crypto', icon: LineChart },
     { label: 'Entertainment', path: '/entertainment', icon: Film },
     { label: 'Discover', path: '/discover', icon: Sparkles },
+
   ];
 
   return (
