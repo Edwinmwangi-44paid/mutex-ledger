@@ -6,6 +6,7 @@ from app.schemas.ledger import WalletResponse
 
 
 class UserRegisterRequest(BaseModel):
+    username: Optional[str] = Field(None, description="Customer full name or username")
     email: EmailStr = Field(..., description="User unique email address")
     password: str = Field(..., min_length=6, description="User password (min 6 chars)")
 
@@ -21,12 +22,14 @@ class AuthTokenResponse(BaseModel):
     expires_in: int = 3600
     user_id: uuid.UUID
     email: str
+    username: Optional[str] = None
     wallet: Optional[WalletResponse] = None
 
 
 class UserProfileResponse(BaseModel):
     id: uuid.UUID
     email: str
+    username: Optional[str] = None
     created_at: datetime
     wallet: Optional[WalletResponse] = None
 

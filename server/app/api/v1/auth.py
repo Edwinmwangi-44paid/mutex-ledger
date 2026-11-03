@@ -53,6 +53,7 @@ async def register(
     new_user = User(
         id=user_id,
         email=clean_email,
+        username=payload.username.strip() if payload.username else None,
         password_hash=hashed,
     )
     session.add(new_user)
@@ -77,6 +78,7 @@ async def register(
         expires_in=3600,
         user_id=user_id,
         email=clean_email,
+        username=new_user.username,
         wallet=WalletResponse(
             id=new_wallet.id,
             user_id=new_wallet.user_id,
@@ -133,6 +135,7 @@ async def login(
         expires_in=3600,
         user_id=user.id,
         email=user.email,
+        username=user.username,
         wallet=wallet_resp,
     )
 
@@ -163,6 +166,7 @@ async def get_me(
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
+        username=current_user.username,
         created_at=current_user.created_at,
         wallet=wallet_resp,
     )

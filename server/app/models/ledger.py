@@ -1,5 +1,6 @@
 import enum
 import uuid
+from typing import Optional
 from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import (
@@ -72,6 +73,10 @@ class User(Base):
     # email (VARCHAR, unique, indexed)
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
+    )
+    # username / full name (VARCHAR, optional)
+    username: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, default=None
     )
     # password_hash (VARCHAR)
     password_hash: Mapped[str] = mapped_column(

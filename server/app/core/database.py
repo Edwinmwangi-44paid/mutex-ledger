@@ -62,6 +62,11 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            try:
+                from sqlalchemy import text
+                await conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+            except Exception:
+                pass
         logger.info("Database schema initialized successfully.")
     except Exception as e:
         logger.warning(
@@ -81,6 +86,11 @@ async def init_db() -> None:
         )
         async with _engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            try:
+                from sqlalchemy import text
+                await conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+            except Exception:
+                pass
         logger.info(f"Initialized fallback database with {sqlite_url}")
 
 
