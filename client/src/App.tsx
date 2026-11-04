@@ -9,6 +9,7 @@ import { MatchDetailsPage } from './components/sports/MatchDetailsPage';
 import { CryptoIntelligenceHub } from './components/crypto/CryptoIntelligenceHub';
 import { EntertainmentDiscovery } from './components/entertainment/EntertainmentDiscovery';
 import { AuthGateway } from './components/AuthGateway';
+import { CustomerProfile } from './components/profile/CustomerProfile';
 import { AuthSession } from './types';
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
@@ -48,6 +49,7 @@ export const App: React.FC = () => {
       {!hidePlatformShell && (
         <UnifiedNavbar
           userEmail={session?.user?.email}
+          userName={session?.user?.username}
           onLogout={handleLogout}
           onOpenSearch={() => setIsSearchOpen(true)}
         />
@@ -91,6 +93,22 @@ export const App: React.FC = () => {
                   }}
                   apiBase={API_BASE}
                 />
+              )
+            }
+          />
+
+          {/* Customer Profile View */}
+          <Route
+            path="/profile"
+            element={
+              session ? (
+                <CustomerProfile
+                  session={session}
+                  apiBase={API_BASE}
+                  onLogout={handleLogout}
+                />
+              ) : (
+                <Navigate to="/auth" replace />
               )
             }
           />

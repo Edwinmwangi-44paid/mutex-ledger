@@ -6,21 +6,24 @@ import {
   Film,
   Compass,
   Search,
-  Sparkles, 
+  Sparkles,
   LogOut,
   Menu,
   X,
   ChevronRight,
-  } from 'lucide-react';
+  User,
+} from 'lucide-react';
 
 interface NavbarProps {
   userEmail?: string;
+  userName?: string;
   onLogout?: () => void;
   onOpenSearch?: () => void;
 }
 
 export const UnifiedNavbar: React.FC<NavbarProps> = ({
   userEmail,
+  userName,
   onLogout,
   onOpenSearch,
 }) => {
@@ -34,7 +37,6 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
     { label: 'Crypto', path: '/crypto', icon: LineChart },
     { label: 'Entertainment', path: '/entertainment', icon: Film },
     { label: 'Discover', path: '/discover', icon: Sparkles },
-
   ];
 
   return (
@@ -63,17 +65,16 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
             <nav className="hidden md:flex items-center space-x-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = location.pathname === link.path || 
+                const isActive = location.pathname === link.path ||
                   (link.path !== '/' && location.pathname.startsWith(link.path));
                 return (
                   <NavLink
                     key={link.path}
                     to={link.path}
-                    className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all ${
-                      isActive
+                    className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all ${isActive
                         ? 'text-white bg-[#1A1E26] shadow-inner font-semibold'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-[#15181E]'
-                    }`}
+                      }`}
                   >
                     <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-gray-400'}`} />
                     <span>{link.label}</span>
@@ -102,17 +103,26 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
               </kbd>
             </button>
 
-            {/* status */}
+            {/* Customer Profile & Authentication Status */}
             {userEmail ? (
               <div className="hidden sm:flex items-center space-x-2 pl-2 border-l border-[#222630]">
-                <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-semibold">
-                  {userEmail.charAt(0).toUpperCase()}
-                </div>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center space-x-2 py-1 px-2.5 rounded-xl bg-[#141822] hover:bg-[#1C2230] border border-[#232A3B] hover:border-emerald-500/40 transition-all cursor-pointer group shadow-sm"
+                  title="View Customer Profile"
+                >
+                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xs font-bold group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+                    {(userName?.trim() || userEmail).charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-semibold text-gray-300 group-hover:text-white transition-colors max-w-[120px] truncate">
+                    {userName?.trim() || userEmail.split('@')[0]}
+                  </span>
+                </button>
                 {onLogout && (
                   <button
                     onClick={onLogout}
                     title="Sign Out"
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-[#1A1E26] transition-colors"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-[#1A1E26] transition-colors cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
@@ -121,7 +131,7 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={() => navigate('/auth')}
-                className="hidden sm:inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors"
+                className="hidden sm:inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors cursor-pointer"
               >
                 Sign In
               </button>
@@ -141,6 +151,21 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[#1E222B] bg-[#0D0F12] px-4 pt-3 pb-6 space-y-1">
+          {userEmail && (
+            <NavLink
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium mb-2 ${location.pathname === '/profile' ? 'bg-[#1A1E26] text-white font-semibold' : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                }`}
+            >
+              <div className="flex items-center space-x-3">
+                <User className="w-4 h-4 text-emerald-400" />
+                <span>My Profile ({userName?.trim() || userEmail.split('@')[0]})</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-emerald-400" />
+            </NavLink>
+          )}
+
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.path;
@@ -149,9 +174,8 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
-                  isActive ? 'bg-[#1A1E26] text-white font-semibold' : 'text-gray-300 hover:bg-[#15181E]'
-                }`}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${isActive ? 'bg-[#1A1E26] text-white font-semibold' : 'text-gray-300 hover:bg-[#15181E]'
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-gray-400'}`} />
@@ -161,6 +185,21 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
               </NavLink>
             );
           })}
+
+          {userEmail && onLogout && (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLogout();
+              }}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 mt-2"
+            >
+              <div className="flex items-center space-x-3">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </div>
+            </button>
+          )}
         </div>
       )}
     </header>

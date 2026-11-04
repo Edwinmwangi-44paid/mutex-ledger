@@ -3,6 +3,7 @@ export type FlatStatusTag = 'SUCCESS' | 'BLOCKED_BY_MUTEX';
 export interface UserProfile {
   id: string;
   email: string;
+  username?: string;
   created_at: string;
 }
 
