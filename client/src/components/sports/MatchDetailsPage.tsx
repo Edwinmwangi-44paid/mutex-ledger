@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Trophy,
@@ -10,6 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 
+
 interface MatchDetailsProps {
   apiBase: string;
 }
@@ -19,26 +20,45 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshingMatch, setIsRefreshingMatch] = useState(false);
   const [activeTab, setActiveTab] = useState<'ai' | 'predictions' | 'stats' | 'h2h'>('ai');
   const [isRefreshingAI, setIsRefreshingAI] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
+  const pollingRef = useRef<any>(null);
 
   useEffect(() => {
     fetchMatch();
   }, [id]);
 
-  const fetchMatch = async () => {
+  // Polling for live match updates (every 20s if live)
+  useEffect(() => {
+    if (data?.fixture?.status === 'LIVE' || data?.fixture?.status === 'HT') {
+      pollingRef.current = setInterval(() => {
+        fetchMatch(true);
+      }, 20000);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [id, data?.fixture?.status]);
+
+  const fetchMatch = async (isBackground = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!isBackground) setLoading(true);
+    else setIsRefreshingMatch(true);
+
     try {
       const res = await fetch(`${apiBase}/sports/fixtures/${id}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
+        setLastRefreshedAt(new Date());
       }
     } catch {
       /* ignore */
     } finally {
       setLoading(false);
+      setIsRefreshingMatch(false);
     }
   };
 
@@ -92,14 +112,31 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <button
-        onClick={() => navigate('/sports')}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to Match Centre</span>
-      </button>
+      {/* Top Navigation & Status Bar */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/sports')}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Match Centre</span>
+        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="text-[11px] text-gray-500 hidden sm:block">
+            Synced: {lastRefreshedAt.toLocaleTimeString()}
+          </div>
+          <button
+            onClick={() => fetchMatch(true)}
+            disabled={isRefreshingMatch}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#151922] hover:bg-[#1C222E] border border-[#232936] text-gray-300 hover:text-white transition-all"
+            title="Refresh Match Data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshingMatch ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
 
       {/* Match Hero Scoreboard */}
       <div className="rounded-2xl bg-gradient-to-b from-[#161B26] to-[#10131B] border border-[#232938] p-6 md:p-8 shadow-2xl">
@@ -113,8 +150,9 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             <span>•</span>
             <span>{fixture.venue || 'Stadium'}</span>
             {isLive && (
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-[10px] animate-pulse">
-                LIVE {fixture.elapsed_minutes}'
+              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                <span>{fixture.status === 'HT' ? 'HALF TIME' : `LIVE ${fixture.elapsed_minutes || 45}'`}</span>
               </span>
             )}
           </div>
@@ -165,7 +203,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
                     {fixture.home_score} - {fixture.away_score}
                   </div>
                   <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">
-                    {fixture.status}
+                    {fixture.status === 'HT' ? 'Half Time' : (fixture.status === 'FT' ? 'Full Time' : `Live Minute ${fixture.elapsed_minutes || 45}'`)}
                   </div>
                 </div>
               )}
@@ -198,180 +236,169 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
         </div>
       </div>
 
-      {/* Tabs Controller */}
-      <div className="flex items-center gap-2 border-b border-[#1E232E] pb-2">
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#1E232E] pb-3">
         {[
-          { id: 'ai', label: 'AI Match Analysis', icon: Sparkles },
-          { id: 'predictions', label: 'Prediction Markets', icon: Layers },
+          { id: 'ai', label: 'AI Deep Analysis', icon: Sparkles },
+          { id: 'predictions', label: 'All Prediction Markets', icon: Layers },
           { id: 'stats', label: 'Match Statistics', icon: BarChart2 },
-          { id: 'h2h', label: 'Head-to-Head & Form', icon: Trophy },
+          { id: 'h2h', label: 'Head to Head', icon: Trophy },
         ].map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
-                isActive
+                activeTab === tab.id
                   ? 'bg-emerald-500 text-black shadow-md'
                   : 'bg-[#151922] text-gray-400 hover:text-white hover:bg-[#1C222E]'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* TAB 1: AI MATCH ANALYSIS */}
+      {/* TAB 1: AI DEEP ANALYSIS */}
       {activeTab === 'ai' && ai_analysis && (
         <div className="space-y-6">
-          {/* AI Banner Card */}
-          <div className="rounded-2xl bg-gradient-to-r from-[#111C18] to-[#121620] border border-emerald-500/30 p-6 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                  <Sparkles className="w-4 h-4" />
-                  <span>AI Probabilistic Model ({ai_analysis.engine_version})</span>
-                </div>
-                <h3 className="text-2xl font-black text-white">
-                  Most Likely Outcome: <span className="text-emerald-400">{ai_analysis.most_likely_outcome}</span>
-                </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
+              <span className="text-xs text-gray-400 font-medium">Poisson Most Likely Result</span>
+              <div className="text-2xl font-black text-emerald-400">
+                {ai_analysis.most_likely_outcome}
               </div>
-
-              <button
-                onClick={handleRunDeepAnalysis}
-                disabled={isRefreshingAI}
-                className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-semibold text-xs flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAI ? 'animate-spin' : ''}`} />
-                <span>Rerun Deep AI Analysis</span>
-              </button>
-            </div>
-
-            {/* 1X2 Probabilities Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-semibold text-gray-300">
-                <span>{fixture.home_team.name}: {ai_analysis.probabilities_1x2.home_win}%</span>
-                <span>Draw: {ai_analysis.probabilities_1x2.draw}%</span>
-                <span>{fixture.away_team.name}: {ai_analysis.probabilities_1x2.away_win}%</span>
-              </div>
-              <div className="h-3 w-full bg-[#1A1F2B] rounded-full overflow-hidden flex">
-                <div
-                  style={{ width: `${ai_analysis.probabilities_1x2.home_win}%` }}
-                  className="bg-emerald-500 h-full"
-                />
-                <div
-                  style={{ width: `${ai_analysis.probabilities_1x2.draw}%` }}
-                  className="bg-amber-500 h-full"
-                />
-                <div
-                  style={{ width: `${ai_analysis.probabilities_1x2.away_win}%` }}
-                  className="bg-cyan-500 h-full"
-                />
-              </div>
-            </div>
-
-            {/* Tactical Explanation */}
-            <div className="p-4 rounded-xl bg-[#0D1017] border border-[#1C212E] space-y-2">
-              <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-                Tactical Breakdown
-              </h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                {ai_analysis.tactical_summary}
+              <p className="text-xs text-gray-400">
+                Predicted score: <span className="text-white font-bold">{ai_analysis.predicted_score}</span>
               </p>
             </div>
 
-            {/* Key Drivers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
+              <span className="text-xs text-gray-400 font-medium">Both Teams To Score (BTTS)</span>
+              <div className="text-2xl font-black text-white">
+                {ai_analysis.btts_probability}%
+              </div>
+              <p className="text-xs text-gray-400">
+                Expected Goal Range: <span className="text-white font-bold">{ai_analysis.predicted_goals_range}</span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
+              <span className="text-xs text-gray-400 font-medium">Engine Confidence</span>
+              <div className="text-2xl font-black text-cyan-400">
+                {ai_analysis.confidence_level}
+              </div>
+              <p className="text-xs text-gray-400">
+                Version: <span className="text-white font-bold">{ai_analysis.engine_version}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-200">1X2 Match Probabilities</h3>
+              <button
+                onClick={handleRunDeepAnalysis}
+                disabled={isRefreshingAI}
+                className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAI ? 'animate-spin' : ''}`} />
+                <span>Re-simulate Poisson Matrix</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
+                <div className="text-xs text-gray-400 font-semibold">{fixture.home_team.name} Win</div>
+                <div className="text-xl font-bold text-white">
+                  {ai_analysis.probabilities_1x2.home_win}%
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
+                <div className="text-xs text-gray-400 font-semibold">Draw</div>
+                <div className="text-xl font-bold text-amber-400">
+                  {ai_analysis.probabilities_1x2.draw}%
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
+                <div className="text-xs text-gray-400 font-semibold">{fixture.away_team.name} Win</div>
+                <div className="text-xl font-bold text-white">
+                  {ai_analysis.probabilities_1x2.away_win}%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-4">
+            <h3 className="text-sm font-bold text-gray-200">Tactical Summary &amp; Key Factors</h3>
+            <p className="text-xs text-gray-300 leading-relaxed bg-[#0F131C] p-4 rounded-xl border border-[#1C212E]">
+              {ai_analysis.tactical_summary}
+            </p>
+            <div className="space-y-2">
               {ai_analysis.key_factors.map((factor: string, idx: number) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl bg-[#0F131C] border border-[#1E2330] text-xs text-gray-300 flex items-center gap-2"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <div key={idx} className="flex items-start gap-2 text-xs text-gray-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                   <span>{factor}</span>
                 </div>
               ))}
-            </div>
-
-            {/* Disclaimer */}
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
-              <span>{ai_analysis.disclaimer}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: PREDICTION MARKETS */}
+      {/* TAB 2: ALL PREDICTION MARKETS */}
       {activeTab === 'predictions' && ai_analysis && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {ai_analysis.market_predictions.map((m: any, idx: number) => (
+          {ai_analysis.market_predictions.map((pred: any) => (
             <div
-              key={idx}
-              className="rounded-2xl bg-[#131720] border border-[#1E2430] p-4 space-y-3"
+              key={pred.id}
+              className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-3"
             >
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-gray-400 uppercase tracking-wider">
-                  {m.market_name}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  {pred.category} • {pred.market_name}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    m.confidence === 'HIGH'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${
+                    pred.confidence === 'HIGH'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-amber-500/20 text-amber-400'
                   }`}
                 >
-                  {m.confidence} CONFIDENCE
+                  {pred.confidence} CONFIDENCE
                 </span>
               </div>
-
-              <div className="flex items-baseline justify-between">
-                <span className="text-base font-extrabold text-white">{m.selection}</span>
-                <span className="text-lg font-black text-emerald-400">{m.probability_pct}%</span>
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold text-white">{pred.selection}</span>
+                <span className="text-lg font-black text-emerald-400">{pred.probability_pct}%</span>
               </div>
-
-              <div className="h-1.5 w-full bg-[#1A1F2C] rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${m.probability_pct}%` }}
-                  className="bg-emerald-500 h-full rounded-full"
-                />
-              </div>
-
-              <p className="text-[11px] text-gray-400 leading-normal">
-                {m.explanation}
-              </p>
+              <p className="text-xs text-gray-400 leading-normal">{pred.explanation}</p>
             </div>
           ))}
         </div>
       )}
 
       {/* TAB 3: MATCH STATISTICS */}
-      {activeTab === 'stats' && statistics && (
+      {activeTab === 'stats' && (
         <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-5">
-          <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">
-            Live Match Telemetry
-          </h3>
-
           {[
-            { label: 'Ball Possession (%)', home: statistics.home_possession, away: statistics.away_possession },
-            { label: 'Total Shots', home: statistics.home_shots_total, away: statistics.away_shots_total },
-            { label: 'Shots on Target', home: statistics.home_shots_on_target, away: statistics.away_shots_on_target },
-            { label: 'Expected Goals (xG)', home: statistics.home_xg, away: statistics.away_xg },
-            { label: 'Corner Kicks', home: statistics.home_corners, away: statistics.away_corners },
-            { label: 'Fouls Committed', home: statistics.home_fouls, away: statistics.away_fouls },
-            { label: 'Yellow Cards', home: statistics.home_yellow_cards, away: statistics.away_yellow_cards },
+            { label: 'Ball Possession (%)', home: statistics?.home_possession || 50, away: statistics?.away_possession || 50 },
+            { label: 'Total Shots', home: statistics?.home_shots_total || 0, away: statistics?.away_shots_total || 0 },
+            { label: 'Shots On Target', home: statistics?.home_shots_on_target || 0, away: statistics?.away_shots_on_target || 0 },
+            { label: 'Expected Goals (xG)', home: statistics?.home_xg || 0.0, away: statistics?.away_xg || 0.0 },
+            { label: 'Corner Kicks', home: statistics?.home_corners || 0, away: statistics?.away_corners || 0 },
+            { label: 'Fouls Committed', home: statistics?.home_fouls || 0, away: statistics?.away_fouls || 0 },
+            { label: 'Yellow Cards', home: statistics?.home_yellow_cards || 0, away: statistics?.away_yellow_cards || 0 },
           ].map((stat, idx) => (
             <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-gray-200">{stat.home}</span>
+              <div className="flex justify-between text-xs font-semibold text-gray-300">
+                <span>{stat.home}</span>
                 <span className="text-gray-400">{stat.label}</span>
-                <span className="text-gray-200">{stat.away}</span>
+                <span>{stat.away}</span>
               </div>
-              <div className="h-2 w-full bg-[#1A1F2C] rounded-full overflow-hidden flex">
+              <div className="w-full bg-[#0F131C] h-2 rounded-full overflow-hidden flex">
                 <div
                   style={{ width: `${(Number(stat.home) / (Number(stat.home) + Number(stat.away) || 1)) * 100}%` }}
                   className="bg-emerald-500 h-full"

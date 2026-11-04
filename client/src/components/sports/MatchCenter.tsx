@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy,
   Clock,
   Sparkles,
   ChevronRight,
-  } from 'lucide-react';
+  RefreshCw,
+  Radio,
+  Flame,
+} from 'lucide-react';
 
 interface Fixture {
   id: string;
@@ -39,6 +42,17 @@ interface Fixture {
   ai_top_probability?: number;
 }
 
+interface LiveTickerItem {
+  id: string;
+  fixture_id: string;
+  minute: number;
+  event_type: string;
+  team_name: string;
+  player: string;
+  score: string;
+  headline: string;
+}
+
 interface MatchCenterProps {
   apiBase: string;
 }
@@ -47,15 +61,34 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [leagues, setLeagues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLeague, setSelectedLeague] = useState<string>('all');
+  const [tickerEvents, setTickerEvents] = useState<LiveTickerItem[]>([]);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const navigate = useNavigate();
+  const pollingRef = useRef<any>(null);
 
+  // Initial load and filter change
   useEffect(() => {
     fetchLeagues();
     fetchFixtures();
+    fetchTicker();
+  }, [statusFilter, selectedLeague, searchQuery]);
+
+  // Live auto-polling: 15s for live tab, 30s for general fixtures
+  useEffect(() => {
+    const pollInterval = statusFilter === 'live' ? 15000 : 30000;
+    pollingRef.current = setInterval(() => {
+      fetchFixtures(true);
+      fetchTicker();
+    }, pollInterval);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [statusFilter, selectedLeague, searchQuery]);
 
   const fetchLeagues = async () => {
@@ -70,11 +103,27 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
     }
   };
 
-  const fetchFixtures = async () => {
-    setLoading(true);
+  const fetchTicker = async () => {
+    try {
+      const res = await fetch(`${apiBase}/sports/live-ticker`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ticker_events) {
+          setTickerEvents(data.ticker_events);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const fetchFixtures = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    else setIsRefreshing(true);
+
     try {
       let url = `${apiBase}/sports/fixtures?`;
-      if (status!== 'all') url += `status_filter=${status}&`;
+      if (statusFilter !== 'all') url += `status_filter=${statusFilter}&`;
       if (selectedLeague !== 'all') url += `league_id=${selectedLeague}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
 
@@ -82,12 +131,19 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
       if (res.ok) {
         const data = await res.json();
         setFixtures(data);
+        setLastRefreshedAt(new Date());
       }
     } catch {
       /* ignore */
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleManualRefresh = () => {
+    fetchFixtures(true);
+    fetchTicker();
   };
 
   const formatKickoff = (isoString: string) => {
@@ -106,20 +162,42 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-950 via-[#101720] to-[#0D0F12] border border-emerald-900/30 p-6 md:p-8">
         <div className="max-w-2xl space-y-3 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Probabilistic Engine v2.1 Active</span>
+            <Radio className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+            <span>SportAPI.ai Live Feed &amp; Multi-League Synchronizer</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
             Sports Match Centre
           </h1>
           <p className="text-sm md:text-base text-gray-300">
-            Real-time live scores, comprehensive fixture schedules, and multi-market Poisson AI analysis across global leagues and regional tournaments.
+            Real-time live scores, comprehensive fixture schedules, and multi-market Poisson AI analysis across Champions League, Premier League, and major global tournaments.
           </p>
         </div>
       </div>
 
-      {/* Status Tabs */}
+      {/* Live Breaking Ticker Bar */}
+      {tickerEvents.length > 0 && (
+        <div className="flex items-center gap-3 bg-[#11141C] border border-red-500/20 rounded-xl px-4 py-2.5 overflow-hidden shadow-inner">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-red-400 uppercase tracking-wider whitespace-nowrap bg-red-500/10 px-2.5 py-1 rounded-md">
+            <Flame className="w-3.5 h-3.5 text-red-500 animate-bounce" />
+            <span>Live Alerts</span>
+          </div>
+          <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-6 text-xs text-gray-300">
+            {tickerEvents.map((t) => (
+              <div key={t.id} className="inline-flex items-center gap-2 shrink-0">
+                <span className="font-bold text-white px-1.5 py-0.5 rounded bg-[#1C222E]">
+                  {t.minute}'
+                </span>
+                <span className="font-semibold text-emerald-400">{t.score}</span>
+                <span className="text-gray-300">{t.headline}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main Controls Bar: Status Filter Tabs (Left) & Refresh / Competition Dropdown (Right) */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1E232E] pb-3">
+        {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {[
             { id: 'all', label: 'All Fixtures' },
@@ -134,7 +212,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-                status=== tab.id
+                statusFilter === tab.id
                   ? 'bg-emerald-500 text-black shadow-md'
                   : 'bg-[#151922] text-gray-400 hover:text-white hover:bg-[#1C222E]'
               }`}
@@ -147,12 +225,24 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
           ))}
         </div>
 
-        {/* & League Dropdown */}
-        <div className="flex items-center gap-2">
+        {/* Action Controls: Refresh & Competition Dropdown (Ticked by user) */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#151922] hover:bg-[#1C222E] border border-[#232936] text-gray-300 hover:text-white transition-all ${
+              isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+            title="Refresh Live Data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh Live Data</span>
+          </button>
+
           <select
             value={selectedLeague}
             onChange={(e) => setSelectedLeague(e.target.value)}
-            className="bg-[#151922] border border-[#232936] text-xs text-gray-200 rounded-lg px-3 py-1.5 focus:outline-none"
+            className="bg-[#151922] border border-[#232936] text-xs text-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer"
           >
             <option value="all">All Competitions</option>
             {leagues.map((lg) => (
@@ -162,6 +252,15 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Sync Status Info */}
+      <div className="flex items-center justify-between text-[11px] text-gray-500 px-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>SportAPI.ai feed active ({fixtures.length} matches in view)</span>
+        </div>
+        <span>Last synced: {lastRefreshedAt.toLocaleTimeString()}</span>
       </div>
 
       {/* Matches Grid */}
@@ -202,6 +301,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
                         src={f.league.logo}
                         alt={f.league.name}
                         className="w-4 h-4 object-contain"
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                       />
                     )}
                     <span className="font-medium text-gray-300 truncate">
@@ -211,8 +311,8 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
 
                   {isLive ? (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 font-bold text-[11px] border border-red-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                      <span>{f.status === 'HT' ? 'HT' : `${f.elapsed_minutes}'`}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      <span>{f.status === 'HT' ? 'HALF TIME' : `${f.elapsed_minutes || 45}'`}</span>
                     </div>
                   ) : isFT ? (
                     <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -236,15 +336,22 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
                       {f.home_team.logo ? (
                         <img
                           src={f.home_team.logo}
-                          alt={f.home_team.name}
-                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full"
+                          alt=""
+                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                            const fallback = (e.target as HTMLElement).nextElementSibling;
+                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                          }}
                         />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-[#1E232F] flex items-center justify-center text-xs font-bold text-gray-400">
-                          {f.home_team.short_name || f.home_team.name.slice(0, 3)}
-                        </div>
-                      )}
-                      <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors">
+                      ) : null}
+                      <div
+                        className="w-7 h-7 rounded-full bg-[#1E232F] items-center justify-center text-xs font-bold text-gray-400 shrink-0"
+                        style={{ display: f.home_team.logo ? 'none' : 'flex' }}
+                      >
+                        {f.home_team.short_name || f.home_team.name.slice(0, 3)}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors truncate">
                         {f.home_team.name}
                       </span>
                     </div>
@@ -261,15 +368,22 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
                       {f.away_team.logo ? (
                         <img
                           src={f.away_team.logo}
-                          alt={f.away_team.name}
-                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full"
+                          alt=""
+                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                            const fallback = (e.target as HTMLElement).nextElementSibling;
+                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                          }}
                         />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-[#1E232F] flex items-center justify-center text-xs font-bold text-gray-400">
-                          {f.away_team.short_name || f.away_team.name.slice(0, 3)}
-                        </div>
-                      )}
-                      <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors">
+                      ) : null}
+                      <div
+                        className="w-7 h-7 rounded-full bg-[#1E232F] items-center justify-center text-xs font-bold text-gray-400 shrink-0"
+                        style={{ display: f.away_team.logo ? 'none' : 'flex' }}
+                      >
+                        {f.away_team.short_name || f.away_team.name.slice(0, 3)}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors truncate">
                         {f.away_team.name}
                       </span>
                     </div>

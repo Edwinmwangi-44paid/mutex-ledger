@@ -117,3 +117,23 @@ class AIDeepAnalysisResponse(BaseModel):
     disclaimer: str
     engine_version: str
 
+
+class LiveTickerItem(BaseModel):
+    id: str
+    fixture_id: str
+    minute: int
+    event_type: str  # GOAL, CARD_YELLOW, CARD_RED, VAR, SUB, CHANCE
+    team_name: str
+    player: str
+    score: str
+    headline: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LiveTickerResponse(BaseModel):
+    live_matches_count: int
+    last_updated: datetime
+    ticker_events: List[LiveTickerItem]
+    live_fixtures: List[FixtureSummary]
+
+

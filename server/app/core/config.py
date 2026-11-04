@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # PostgreSQL Configuration
-    # Uses asyncpg driver for high-performance async I/O
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
@@ -39,11 +38,16 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
 
-    # Fallback to in-memory mocks if Postgres/Redis cannot connect (ensures standalone testing & demo)
+    # Fallback to in-memory mocks if Postgres/Redis cannot connect
     FALLBACK_IN_MEMORY: bool = True
     
+    # Sports Data API Integration (SportAPI.ai key)
+    FOOTBALL_API_KEY: str | None = os.getenv("FOOTBALL_API_KEY", None)
+    FOOTBALL_API_PROVIDER: str = os.getenv("FOOTBALL_API_PROVIDER", "sportapi")
+
+    
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )
