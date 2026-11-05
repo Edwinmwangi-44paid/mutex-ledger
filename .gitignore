@@ -3,16 +3,22 @@
 .env.*
 !.env.example
 *.env
+server/.env
+client/.env
 
-# Python
+# Python & Compiled Artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
 *.so
 .Python
 env/
 venv/
 ENV/
+.venv/
 build/
 develop-eggs/
 dist/
@@ -28,9 +34,13 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Node / Frontend
 node_modules/
+client/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -42,10 +52,16 @@ dist/
 *.log
 *.sqlite
 *.sqlite3
+*.db
+mutex_ledger.db
+server/mutex_ledger.db
 
-# OS / Editor files
+# OS / Editor files & Scratch
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*.swo
+scratch/
 

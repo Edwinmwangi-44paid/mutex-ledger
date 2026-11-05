@@ -7,6 +7,7 @@ class LeagueBase(BaseModel):
     id: str
     name: str
     country: str
+    sport: Optional[str] = "football"
     logo: Optional[str] = None
     flag: Optional[str] = None
     season: str
@@ -69,6 +70,7 @@ class PredictionItem(BaseModel):
 
 class FixtureSummary(BaseModel):
     id: str
+    sport: Optional[str] = "football"
     league: LeagueBase
     home_team: TeamBase
     away_team: TeamBase

@@ -12,10 +12,12 @@ import {
 
 interface Fixture {
   id: string;
+  sport?: string;
   league: {
     id: string;
     name: string;
     country: string;
+    sport?: string;
     logo?: string;
   };
   home_team: {
@@ -60,6 +62,18 @@ interface MatchCenterProps {
 export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [leagues, setLeagues] = useState<any[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; icon: string }[]>([
+    { id: 'all', name: 'All Sports', icon: '🏆' },
+    { id: 'football', name: 'Football', icon: '⚽' },
+    { id: 'basketball', name: 'Basketball', icon: '🏀' },
+    { id: 'volleyball', name: 'Volleyball', icon: '🏐' },
+    { id: 'cricket', name: 'Cricket', icon: '🏏' },
+    { id: 'american_football', name: 'American Football', icon: '🏈' },
+    { id: 'hockey', name: 'Ice Hockey', icon: '🏒' },
+    { id: 'tennis', name: 'Tennis', icon: '🎾' },
+    { id: 'baseball', name: 'Baseball', icon: '⚾' },
+  ]);
+  const [selectedSport, setSelectedSport] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -73,10 +87,11 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
 
   // Initial load and filter change
   useEffect(() => {
+    fetchCategories();
     fetchLeagues();
     fetchFixtures();
     fetchTicker();
-  }, [statusFilter, selectedLeague, searchQuery]);
+  }, [statusFilter, selectedSport, selectedLeague, searchQuery]);
 
   // Live auto-polling: 15s for live tab, 30s for general fixtures
   useEffect(() => {
@@ -89,11 +104,26 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [statusFilter, selectedLeague, searchQuery]);
+  }, [statusFilter, selectedSport, selectedLeague, searchQuery]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(`${apiBase}/sports/sports-categories`);
+      if (res.ok) {
+        const data = await res.json();
+        setCategories([{ id: 'all', name: 'All Sports', icon: '🏆' }, ...data]);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
 
   const fetchLeagues = async () => {
     try {
-      const res = await fetch(`${apiBase}/sports/leagues`);
+      const url = selectedSport !== 'all' 
+        ? `${apiBase}/sports/leagues?sport=${selectedSport}` 
+        : `${apiBase}/sports/leagues`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setLeagues(data);
@@ -124,6 +154,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
     try {
       let url = `${apiBase}/sports/fixtures?`;
       if (statusFilter !== 'all') url += `status_filter=${statusFilter}&`;
+      if (selectedSport !== 'all') url += `sport=${selectedSport}&`;
       if (selectedLeague !== 'all') url += `league_id=${selectedLeague}&`;
       if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
 
@@ -195,7 +226,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
         </div>
       )}
 
-      {/* Main Controls Bar: Status Filter Tabs (Left) & Refresh / Competition Dropdown (Right) */}
+      {/* Main Controls Bar: Status Filter Tabs (Left) & Sports Categories / Competition Dropdown (Right) */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1E232E] pb-3">
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -225,19 +256,25 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
           ))}
         </div>
 
-        {/* Action Controls: Refresh & Competition Dropdown (Ticked by user) */}
+        {/* Action Controls: Sport Category Selector & Competition Dropdown */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#151922] hover:bg-[#1C222E] border border-[#232936] text-gray-300 hover:text-white transition-all ${
-              isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-            title="Refresh Live Data"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh Live Data</span>
-          </button>
+          {/* Sports Category Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedSport}
+              onChange={(e) => {
+                setSelectedSport(e.target.value);
+                setSelectedLeague('all');
+              }}
+              className="bg-[#121620] hover:bg-[#181D28] border border-emerald-500/40 text-xs text-emerald-400 font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer shadow-sm transition-all"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-[#10141D] text-gray-200">
+                  {c.icon} {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <select
             value={selectedLeague}
@@ -251,6 +288,17 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
               </option>
             ))}
           </select>
+
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className={`p-1.5 rounded-lg bg-[#151922] hover:bg-[#1C222E] border border-[#232936] text-gray-400 hover:text-white transition-all ${
+              isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+            title="Refresh Data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
@@ -333,24 +381,18 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
                   {/* Home Team */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {f.home_team.logo ? (
-                        <img
-                          src={f.home_team.logo}
-                          alt=""
-                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                            const fallback = (e.target as HTMLElement).nextElementSibling;
-                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className="w-7 h-7 rounded-full bg-[#1E232F] items-center justify-center text-xs font-bold text-gray-400 shrink-0"
-                        style={{ display: f.home_team.logo ? 'none' : 'flex' }}
-                      >
-                        {f.home_team.short_name || f.home_team.name.slice(0, 3)}
-                      </div>
+                      <img
+                        src={f.home_team.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.home_team.name)}&background=151D29&color=10B981&bold=true&size=128`}
+                        alt={f.home_team.name}
+                        className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0 shadow-sm"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(f.home_team.name)}&background=151D29&color=10B981&bold=true&size=128`;
+                          if (target.src !== fallbackUrl) {
+                            target.src = fallbackUrl;
+                          }
+                        }}
+                      />
                       <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors truncate">
                         {f.home_team.name}
                       </span>
@@ -365,24 +407,18 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
                   {/* Away Team */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {f.away_team.logo ? (
-                        <img
-                          src={f.away_team.logo}
-                          alt=""
-                          className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                            const fallback = (e.target as HTMLElement).nextElementSibling;
-                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className="w-7 h-7 rounded-full bg-[#1E232F] items-center justify-center text-xs font-bold text-gray-400 shrink-0"
-                        style={{ display: f.away_team.logo ? 'none' : 'flex' }}
-                      >
-                        {f.away_team.short_name || f.away_team.name.slice(0, 3)}
-                      </div>
+                      <img
+                        src={f.away_team.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.away_team.name)}&background=151D29&color=10B981&bold=true&size=128`}
+                        alt={f.away_team.name}
+                        className="w-7 h-7 object-contain bg-white/5 p-1 rounded-full shrink-0 shadow-sm"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(f.away_team.name)}&background=151D29&color=10B981&bold=true&size=128`;
+                          if (target.src !== fallbackUrl) {
+                            target.src = fallbackUrl;
+                          }
+                        }}
+                      />
                       <span className="text-sm font-semibold text-gray-100 group-hover:text-emerald-300 transition-colors truncate">
                         {f.away_team.name}
                       </span>
