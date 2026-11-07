@@ -12,7 +12,11 @@ import { AuthGateway } from './components/AuthGateway';
 import { CustomerProfile } from './components/profile/CustomerProfile';
 import { AuthSession } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+// Support both VITE_API_URL and VITE_API_BASE_URL (with or without /api/v1 suffix)
+const rawApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE = rawApiUrl
+  ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
+  : 'http://127.0.0.1:8000/api/v1';
 
 
 export const App: React.FC = () => {
