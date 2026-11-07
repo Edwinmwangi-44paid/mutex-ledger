@@ -134,6 +134,19 @@ app.include_router(intelligence.router, prefix=settings.API_V1_STR)
 app.include_router(discovery.router, prefix=settings.API_V1_STR)
 
 
+@app.get("/", tags=["Root"])
+@app.head("/", tags=["Root"])
+async def root():
+    return {
+        "status": "ONLINE",
+        "service": settings.PROJECT_NAME,
+        "docs": "/docs",
+        "health": "/health",
+        "api_v1": settings.API_V1_STR,
+    }
+
+
+@app.head("/health", tags=["Health"])
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {
