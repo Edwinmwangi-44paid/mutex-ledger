@@ -15,14 +15,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface AuthGatewayProps {
   onAuthSuccess: (session: { token: string; user: any; wallet: any }) => void;
   apiBase: string;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }
 
-export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase }) => {
+export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase, isDark = true, onToggleTheme }) => {
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -44,31 +48,31 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       title: 'AI Match Forecasting & Statistical Form',
       description:
         'Calculates real-time 1X2 probabilities, Over/Under goal expectations, and rolling momentum curves for European top-flight leagues.',
-      badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+      badgeColor: 'text-[#3E4FFF] dark:text-[#8D9BFF] bg-[#3E4FFF]/10 border-[#3E4FFF]/25',
       icon: Trophy,
       preview: (
-        <div className="space-y-3 p-4 rounded-2xl bg-[#090C12] border border-[#1E2536]">
-          <div className="flex items-center justify-between text-[11px] text-gray-400">
-            <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="space-y-3 p-4 rounded-2xl bg-black/[0.03] dark:bg-[#090C12] border border-black/[0.08] dark:border-[#1E2536]">
+          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5 font-semibold text-[#3E4FFF] dark:text-[#8D9BFF]">
+              <span className="w-2 h-2 rounded-full bg-[#3E4FFF] animate-pulse" />
               Premier League • 78'
             </span>
-            <span className="text-[10px] text-gray-500 font-mono">Poisson xG 2.41 - 1.15</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">Poisson xG 2.41 - 1.15</span>
           </div>
-          <div className="flex items-center justify-between text-sm font-bold text-white">
+          <div className="flex items-center justify-between text-sm font-bold text-gray-950 dark:text-white">
             <span>Arsenal</span>
-            <span className="px-2.5 py-0.5 rounded-lg bg-[#161D2B] text-emerald-400 font-mono font-bold">2 - 1</span>
+            <span className="px-2.5 py-0.5 rounded-lg bg-black/[0.05] dark:bg-[#161D2B] text-[#3E4FFF] dark:text-[#8D9BFF] font-mono font-bold">2 - 1</span>
             <span>Chelsea</span>
           </div>
           <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between text-[10px] text-gray-400 font-medium">
-              <span className="text-emerald-400 font-semibold">Home Win 64%</span>
+            <div className="flex justify-between text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+              <span className="text-[#3E4FFF] dark:text-[#8D9BFF] font-semibold">Home Win 64%</span>
               <span>Draw 21%</span>
-              <span className="text-rose-400 font-semibold">Away 15%</span>
+              <span className="text-rose-500 font-semibold">Away 15%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-[#161D2B] flex overflow-hidden p-0.5 gap-0.5">
-              <div className="bg-emerald-500 rounded-full h-full" style={{ width: '64%' }} />
-              <div className="bg-gray-600 rounded-full h-full" style={{ width: '21%' }} />
+            <div className="w-full h-2 rounded-full bg-black/[0.06] dark:bg-[#161D2B] flex overflow-hidden p-0.5 gap-0.5">
+              <div className="bg-[#3E4FFF] rounded-full h-full" style={{ width: '64%' }} />
+              <div className="bg-gray-400 dark:bg-gray-600 rounded-full h-full" style={{ width: '21%' }} />
               <div className="bg-rose-500 rounded-full h-full" style={{ width: '15%' }} />
             </div>
           </div>
@@ -81,25 +85,25 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       title: 'Institutional Orderbook & Market Depth',
       description:
         'High-frequency non-custodial telemetry, live orderbook ladders, and tick-by-tick volatility monitoring across BTC, ETH, and SOL.',
-      badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+      badgeColor: 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/25',
       icon: LineChart,
       preview: (
-        <div className="space-y-3 p-4 rounded-2xl bg-[#090C12] border border-[#1E2536]">
+        <div className="space-y-3 p-4 rounded-2xl bg-black/[0.03] dark:bg-[#090C12] border border-black/[0.08] dark:border-[#1E2536]">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-bold text-white flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+            <span className="font-bold text-gray-950 dark:text-white flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-500" />
               BTC / USDT Perpetual
             </span>
-            <span className="text-emerald-400 font-semibold font-mono">+3.84% 24h</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">+3.84% 24h</span>
           </div>
-          <div className="text-2xl font-black text-white font-mono tracking-tight">$94,820.50</div>
+          <div className="text-2xl font-black text-gray-950 dark:text-white font-mono tracking-tight">$94,820.50</div>
           <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <div className="text-gray-400 text-[9px] uppercase font-sans">Bid Orderbook Depth</div>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+              <div className="text-gray-500 dark:text-gray-400 text-[9px] uppercase font-sans">Bid Depth</div>
               <div className="font-bold text-xs mt-0.5">$14.2M Buy Vol</div>
             </div>
-            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
-              <div className="text-gray-400 text-[9px] uppercase font-sans">Ask Orderbook Depth</div>
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400">
+              <div className="text-gray-500 dark:text-gray-400 text-[9px] uppercase font-sans">Ask Depth</div>
               <div className="font-bold text-xs mt-0.5">$11.8M Sell Vol</div>
             </div>
           </div>
@@ -112,68 +116,61 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       title: 'Cinematic Metadata & Streaming Guides',
       description:
         'Find verified streaming platforms (Netflix, Disney+, Prime Video, Apple TV+, Showmax) instantly without jumping between fragmented apps.',
-      badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+      badgeColor: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/25',
       icon: Film,
       preview: (
-        <div className="space-y-3 p-4 rounded-2xl bg-[#090C12] border border-[#1E2536]">
-          <div className="flex items-center justify-between text-[11px] text-gray-400">
-            <span className="text-purple-400 font-semibold flex items-center gap-1">
+        <div className="space-y-3 p-4 rounded-2xl bg-black/[0.03] dark:bg-[#090C12] border border-black/[0.08] dark:border-[#1E2536]">
+          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+            <span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
               Authorized Streaming Guide
             </span>
             <span className="text-[10px]">4K UHD • HDR</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-13 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-600 flex items-center justify-center font-black text-white text-xs shadow-md">
+            <div className="w-11 h-13 rounded-xl bg-gradient-to-br from-[#3E4FFF] via-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-xs shadow-md">
               D2
             </div>
             <div className="space-y-0.5">
-              <div className="text-xs font-bold text-white">Dune: Part Two (2024)</div>
-              <div className="text-[10px] text-gray-400">Sci-Fi • 2h 46m • ⭐ 8.6/10</div>
+              <div className="text-xs font-bold text-gray-950 dark:text-white">Dune: Part Two (2024)</div>
+              <div className="text-[10px] text-gray-500 dark:text-gray-400">Sci-Fi • 2h 46m • ⭐ 8.6/10</div>
             </div>
           </div>
           <div className="flex items-center gap-1.5 pt-1">
-            <span className="px-2 py-0.5 rounded-md bg-red-600/20 border border-red-600/30 text-red-400 text-[9px] font-bold">Netflix</span>
-            <span className="px-2 py-0.5 rounded-md bg-blue-600/20 border border-blue-600/30 text-blue-400 text-[9px] font-bold">Prime Video</span>
-            <span className="px-2 py-0.5 rounded-md bg-cyan-600/20 border border-cyan-600/30 text-cyan-400 text-[9px] font-bold">Apple TV+</span>
+            <span className="px-2 py-0.5 rounded-md bg-red-600/15 border border-red-600/30 text-red-600 dark:text-red-400 text-[9px] font-bold">Netflix</span>
+            <span className="px-2 py-0.5 rounded-md bg-blue-600/15 border border-blue-600/30 text-blue-600 dark:text-blue-400 text-[9px] font-bold">Prime Video</span>
+            <span className="px-2 py-0.5 rounded-md bg-cyan-600/15 border border-cyan-600/30 text-cyan-600 dark:text-cyan-400 text-[9px] font-bold">Apple TV+</span>
           </div>
         </div>
       ),
     },
   ];
 
-  // Auto-rotate slideshow every 5 seconds
+  // Auto-advance slideshow every 7 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [slides.length]);
 
   const handleTabSwitch = (newMode: 'LOGIN' | 'REGISTER') => {
     setMode(newMode);
     setErrorMessage(null);
-    setPassword('');
-    setConfirmPassword('');
   };
 
-  const validateForm = (): boolean => {
-    setErrorMessage(null);
+  const validateForm = () => {
+    if (!email.trim() || !password) {
+      setErrorMessage('Please fill in all required fields.');
+      return false;
+    }
     if (mode === 'REGISTER' && !username.trim()) {
-      setErrorMessage('Please provide your name or username.');
+      setErrorMessage('Username is required for registration.');
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) {
-      setErrorMessage('Please enter your email address.');
-      return false;
-    }
     if (!emailRegex.test(email.trim())) {
-      setErrorMessage('Invalid email format. Please provide a valid email address.');
-      return false;
-    }
-    if (!password) {
-      setErrorMessage('Password field cannot be empty.');
+      setErrorMessage('Please enter a valid email address.');
       return false;
     }
     if (password.length < 6) {
@@ -248,34 +245,39 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
     const socialSecret = `OAuth_${provider}_Key!${randomSuffix}`;
 
     try {
-      const registerRes = await fetch(`${apiBase}/auth/register`, {
+      const regRes = await fetch(`${apiBase}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: socialEmail, username: socialUsername, password: socialSecret }),
+        body: JSON.stringify({
+          email: socialEmail,
+          username: socialUsername,
+          password: socialSecret,
+        }),
       });
 
-      if (registerRes.ok) {
-        const data = await registerRes.json();
+      if (regRes.ok) {
+        const regData = await regRes.json();
         onAuthSuccess({
-          token: data.access_token,
+          token: regData.access_token,
           user: {
-            id: data.user_id,
-            email: provider === 'google' ? `user.${randomSuffix}@gmail.com` : `user.${randomSuffix}@icloud.com`,
-            username: socialUsername,
-            created_at: data.created_at || new Date().toISOString(),
+            id: regData.user_id,
+            email: regData.email,
+            username: regData.username,
+            created_at: regData.created_at || new Date().toISOString(),
           },
-          wallet: data.wallet || { id: 'wallet_main', balance: 1000 },
+          wallet: regData.wallet || { id: 'wallet_main', balance: 1000 },
         });
         return;
       }
     } catch {
-      // Backend unavailable; fallback
+      /* fallback simulated */
+    } finally {
+      setSocialLoading(null);
     }
 
     setTimeout(() => {
-      setSocialLoading(null);
       onAuthSuccess({
-        token: `oauth_${provider}_jwt_${Date.now()}`,
+        token: `mock_jwt_${provider}_${Date.now()}`,
         user: {
           id: `usr_${provider}_${randomSuffix}`,
           email: provider === 'google' ? `user.${randomSuffix}@gmail.com` : `user.${randomSuffix}@icloud.com`,
@@ -288,47 +290,58 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#07090E] flex flex-col lg:flex-row select-none">
+    <div className="min-h-screen w-full bg-[#FAFAFB] dark:bg-[#050608] text-gray-900 dark:text-gray-200 flex flex-col lg:flex-row select-none transition-colors duration-200">
       {/* ═════════════════════════════════════════════════════════════
           LEFT PANEL: Authentic Modern Auth Form
       ═════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[48%] xl:w-[44%] min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-12 z-10 bg-[#07090E]">
+      <div className="w-full lg:w-[48%] xl:w-[44%] min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-12 z-10 bg-white/80 dark:bg-[#050608] backdrop-blur-md transition-colors">
         {/* Top Header */}
         <div className="flex items-center justify-between w-full">
           {/* Brand Logo */}
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 p-[1.5px] shadow-lg shadow-emerald-500/20">
-              <div className="w-full h-full bg-[#0B0D12] rounded-[10px] flex items-center justify-center font-black text-white text-sm">
-                P
-              </div>
+            <div className="w-8 h-8 rounded-xl bg-[#3E4FFF] flex items-center justify-center font-black text-white text-sm shadow-md shadow-[#3E4FFF]/25">
+              P
             </div>
-            <span className="text-base font-extrabold tracking-tight text-white">
-              Pesa<span className="text-emerald-400">Flip</span>
+            <span className="text-base font-extrabold tracking-tight text-gray-950 dark:text-white">
+              Pesa<span className="text-[#3E4FFF] dark:text-[#8D9BFF]">Flip</span>
             </span>
           </div>
 
-          {/* Back Home Link */}
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-x-1 transition-transform" />
-            <span>Back home</span>
-          </button>
+          {/* Right Controls: Theme Toggle & Back Home */}
+          <div className="flex items-center gap-3">
+            {onToggleTheme && (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                aria-label="Toggle theme"
+                className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] transition-colors cursor-pointer"
+                title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#3E4FFF]" />}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[#3E4FFF] group-hover:-translate-x-1 transition-transform" />
+              <span>Back home</span>
+            </button>
+          </div>
         </div>
 
         {/* Central Form Container */}
         <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto py-8 space-y-6">
           {/* Mode Switcher Tabs */}
-          <div className="inline-flex p-1 rounded-xl bg-[#11151F] border border-[#1E2536]">
+          <div className="inline-flex p-1 rounded-xl bg-black/[0.04] dark:bg-[#11151F] border border-black/[0.08] dark:border-[#1E2536]">
             <button
               type="button"
               onClick={() => handleTabSwitch('LOGIN')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 mode === 'LOGIN'
-                  ? 'bg-[#1C2333] text-white shadow-sm border border-[#2B354C]'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-white dark:bg-[#1C2333] text-gray-950 dark:text-white shadow-sm border border-black/[0.08] dark:border-[#2B354C]'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
               }`}
             >
               Log in
@@ -338,8 +351,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               onClick={() => handleTabSwitch('REGISTER')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 mode === 'REGISTER'
-                  ? 'bg-[#1C2333] text-white shadow-sm border border-[#2B354C]'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-white dark:bg-[#1C2333] text-gray-950 dark:text-white shadow-sm border border-black/[0.08] dark:border-[#2B354C]'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
               }`}
             >
               Create account
@@ -348,12 +361,12 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
 
           {/* Heading */}
           <div className="space-y-1.5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight leading-snug">
               {mode === 'REGISTER'
                 ? 'Start exploring. Your intelligence hub is minutes away.'
                 : 'Welcome back. Access your intelligence feeds.'}
             </h1>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               {mode === 'REGISTER'
                 ? 'Create your free account to unlock real-time match predictions and crypto intelligence.'
                 : 'Sign in with your email or social identity to resume your feeds.'}
@@ -366,7 +379,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               type="button"
               disabled={isLoading || socialLoading !== null}
               onClick={() => handleSocialAuth('google')}
-              className="py-2.5 px-3 rounded-xl bg-[#11151F] hover:bg-[#1A202E] border border-[#1E2536] hover:border-gray-500 text-xs font-semibold text-white flex items-center justify-center gap-2.5 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+              className="py-2.5 px-3 rounded-xl bg-white dark:bg-[#11151F] hover:bg-gray-50 dark:hover:bg-[#1A202E] border border-black/[0.08] dark:border-[#1E2536] hover:border-black/20 dark:hover:border-white/20 text-xs font-semibold text-gray-900 dark:text-white flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -393,9 +406,9 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               type="button"
               disabled={isLoading || socialLoading !== null}
               onClick={() => handleSocialAuth('apple')}
-              className="py-2.5 px-3 rounded-xl bg-[#11151F] hover:bg-[#1A202E] border border-[#1E2536] hover:border-gray-500 text-xs font-semibold text-white flex items-center justify-center gap-2.5 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+              className="py-2.5 px-3 rounded-xl bg-white dark:bg-[#11151F] hover:bg-gray-50 dark:hover:bg-[#1A202E] border border-black/[0.08] dark:border-[#1E2536] hover:border-black/20 dark:hover:border-white/20 text-xs font-semibold text-gray-900 dark:text-white flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
             >
-              <svg className="w-4 h-4 shrink-0 fill-white" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0 fill-current text-gray-900 dark:text-white" viewBox="0 0 24 24">
                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.86c.62-.75 1.04-1.8 1.01-2.86-.89.04-1.98.6-2.62 1.34-.57.65-1.06 1.71-1.01 2.74 1 .08 2-.47 2.62-1.22z" />
               </svg>
               <span>Apple</span>
@@ -404,16 +417,16 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
 
           {/* Divider */}
           <div className="relative flex items-center justify-center">
-            <div className="border-t border-[#1C2333] w-full" />
-            <span className="bg-[#07090E] px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest absolute">
+            <div className="border-t border-black/[0.08] dark:border-[#1C2333] w-full" />
+            <span className="bg-[#FAFAFB] dark:bg-[#050608] px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest absolute">
               or
             </span>
           </div>
 
           {/* Error Alert */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -423,11 +436,11 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
             {/* NAME Field (shown in CREATE ACCOUNT mode) */}
             {mode === 'REGISTER' && (
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   NAME
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-gray-500 absolute left-3.5 top-3 pointer-events-none" />
+                  <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     type="text"
                     id="pesaflip_name_field"
@@ -437,7 +450,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                     placeholder="Ada Lovelace"
                     autoComplete="off"
                     required
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#0D1017] border border-[#1E2536] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#0D1017] border border-black/[0.08] dark:border-[#1E2536] focus:border-[#3E4FFF] focus:ring-1 focus:ring-[#3E4FFF]/30 rounded-xl text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-colors shadow-sm"
                   />
                 </div>
               </div>
@@ -445,11 +458,11 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
 
             {/* EMAIL Field */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                 EMAIL
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-3 pointer-events-none" />
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3 pointer-events-none" />
                 <input
                   type="email"
                   id="pesaflip_email_field"
@@ -459,18 +472,18 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                   placeholder="you@company.com"
                   autoComplete="off"
                   required
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#0D1017] border border-[#1E2536] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#0D1017] border border-black/[0.08] dark:border-[#1E2536] focus:border-[#3E4FFF] focus:ring-1 focus:ring-[#3E4FFF]/30 rounded-xl text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-colors shadow-sm"
                 />
               </div>
             </div>
 
             {/* PASSWORD Field */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                 PASSWORD
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3 pointer-events-none" />
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="pesaflip_password_field"
@@ -480,13 +493,13 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                   placeholder="••••••••"
                   autoComplete="new-password"
                   required
-                  className="w-full pl-10 pr-10 py-2.5 bg-[#0D1017] border border-[#1E2536] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                  className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-[#0D1017] border border-black/[0.08] dark:border-[#1E2536] focus:border-[#3E4FFF] focus:ring-1 focus:ring-[#3E4FFF]/30 rounded-xl text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-colors shadow-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
-                  className="absolute right-3.5 top-2.5 text-gray-500 hover:text-gray-300 cursor-pointer focus:outline-none"
+                  className="absolute right-3.5 top-2.5 text-gray-400 hover:text-black dark:hover:text-gray-200 cursor-pointer focus:outline-none"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -497,11 +510,11 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
             {/* CONFIRM PASSWORD (shown in CREATE ACCOUNT mode) */}
             {mode === 'REGISTER' && (
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   CONFIRM PASSWORD
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3 pointer-events-none" />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     id="pesaflip_confirm_field"
@@ -511,13 +524,13 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                     placeholder="••••••••"
                     autoComplete="new-password"
                     required
-                    className="w-full pl-10 pr-10 py-2.5 bg-[#0D1017] border border-[#1E2536] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
+                    className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-[#0D1017] border border-black/[0.08] dark:border-[#1E2536] focus:border-[#3E4FFF] focus:ring-1 focus:ring-[#3E4FFF]/30 rounded-xl text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-colors shadow-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     tabIndex={-1}
-                    className="absolute right-3.5 top-2.5 text-gray-500 hover:text-gray-300 cursor-pointer focus:outline-none"
+                    className="absolute right-3.5 top-2.5 text-gray-400 hover:text-black dark:hover:text-gray-200 cursor-pointer focus:outline-none"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -530,7 +543,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
             <button
               type="submit"
               disabled={isLoading || socialLoading !== null}
-              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-600/20 active:scale-[0.99] mt-3"
+              className="w-full py-3 rounded-xl bg-[#3E4FFF] hover:bg-[#3140E8] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-[#3E4FFF]/30 active:scale-[0.99] mt-3"
             >
               <span>
                 {isLoading
@@ -550,7 +563,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                     setEmail('agent.smith@mutex.core');
                     setPassword('Password123!');
                   }}
-                  className="text-[11px] text-gray-500 hover:text-emerald-400 transition-colors cursor-pointer"
+                  className="text-[11px] text-gray-500 hover:text-[#3E4FFF] dark:hover:text-[#8D9BFF] transition-colors cursor-pointer"
                 >
                   ⚡ Quick fill demo account (<span className="underline">agent.smith@mutex.core</span>)
                 </button>
@@ -559,14 +572,14 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           </form>
 
           {/* Toggle between Login and Register */}
-          <div className="text-center pt-2 text-xs text-gray-400">
+          <div className="text-center pt-2 text-xs text-gray-500 dark:text-gray-400">
             {mode === 'REGISTER' ? (
               <span>
                 Already have an account?{' '}
                 <button
                   type="button"
                   onClick={() => handleTabSwitch('LOGIN')}
-                  className="font-semibold text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  className="font-semibold text-[#3E4FFF] dark:text-[#8D9BFF] hover:underline cursor-pointer"
                 >
                   Sign in
                 </button>
@@ -577,7 +590,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                 <button
                   type="button"
                   onClick={() => handleTabSwitch('REGISTER')}
-                  className="font-semibold text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  className="font-semibold text-[#3E4FFF] dark:text-[#8D9BFF] hover:underline cursor-pointer"
                 >
                   Create account
                 </button>
@@ -587,7 +600,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
         </div>
 
         {/* Subtle Footer Note */}
-        <div className="text-[11px] text-gray-600">
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">
           <span>Protected by PesaFlip Intelligence. Non-custodial analytics.</span>
         </div>
       </div>
@@ -595,29 +608,29 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
       {/* ═════════════════════════════════════════════════════════════
           RIGHT PANEL: Slideshow Showcase of Integrations
       ═════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex lg:w-[52%] xl:w-[56%] min-h-screen bg-[#0A0D15] relative flex-col items-center justify-center p-8 xl:p-12 border-l border-[#192030] overflow-hidden">
+      <div className="hidden lg:flex lg:w-[52%] xl:w-[56%] min-h-screen bg-black/[0.02] dark:bg-[#0A0D15] relative flex-col items-center justify-center p-8 xl:p-12 border-l border-black/[0.06] dark:border-[#192030] overflow-hidden transition-colors">
         {/* Subtle background blueprint grid */}
         <div
-          className="absolute inset-0 opacity-[0.07] pointer-events-none"
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
           style={{
-            backgroundImage: `radial-gradient(circle, #38BDF8 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(circle, #3E4FFF 1px, transparent 1px)`,
             backgroundSize: '24px 24px',
           }}
         />
 
         {/* Decorative Floating Tech Nodes */}
-        <div className="absolute top-16 left-16 w-3 h-3 rounded-full border-2 border-blue-400/60 pointer-events-none" />
+        <div className="absolute top-16 left-16 w-3 h-3 rounded-full border-2 border-[#3E4FFF]/60 pointer-events-none" />
         <div className="absolute top-28 right-24 w-2.5 h-2.5 rotate-45 border-2 border-emerald-400/60 pointer-events-none" />
         <div className="absolute bottom-28 left-20 w-3 h-3 rounded-full border-2 border-amber-400/60 pointer-events-none" />
         <div className="absolute bottom-20 right-28 w-2 h-2 rotate-45 border-2 border-purple-400/60 pointer-events-none" />
 
         {/* Tagline */}
-        <div className="text-[11px] font-extrabold tracking-widest text-gray-400 uppercase mb-5 z-10">
+        <div className="text-[11px] font-extrabold tracking-widest text-gray-500 dark:text-gray-400 uppercase mb-5 z-10">
           WHAT'S NEW AT PESAFLIP
         </div>
 
         {/* Carousel Showcase Card */}
-        <div className="w-full max-w-md rounded-3xl bg-[#111624]/95 backdrop-blur-xl border border-[#20293D] shadow-2xl p-6 sm:p-7 space-y-5 z-10 transition-all duration-300">
+        <div className="w-full max-w-md rounded-3xl micro-card p-6 sm:p-7 space-y-5 z-10 transition-all duration-300 border border-black/[0.08] dark:border-white/[0.08] shadow-2xl">
           {/* Card Top: Live Preview Component */}
           <div className="transition-all duration-300">
             {slides[currentSlide].preview}
@@ -634,11 +647,11 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               </span>
             </div>
 
-            <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+            <h3 className="text-base sm:text-lg font-extrabold text-gray-950 dark:text-white tracking-tight">
               {slides[currentSlide].title}
             </h3>
 
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
               {slides[currentSlide].description}
             </p>
           </div>
@@ -649,7 +662,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           <button
             type="button"
             onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-            className="w-8 h-8 rounded-full bg-[#141926] hover:bg-[#1D2538] border border-[#232D42] flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer shadow-md"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#141926] hover:bg-gray-100 dark:hover:bg-[#1D2538] border border-black/[0.08] dark:border-[#232D42] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-all cursor-pointer shadow-md"
             aria-label="Previous Slide"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -664,8 +677,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
                 onClick={() => setCurrentSlide(idx)}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
                   currentSlide === idx
-                    ? 'w-6 bg-blue-500'
-                    : 'w-1.5 bg-[#252E44] hover:bg-gray-500'
+                    ? 'w-6 bg-[#3E4FFF]'
+                    : 'w-1.5 bg-black/20 dark:bg-[#252E44] hover:bg-gray-500'
                 }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
@@ -675,7 +688,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           <button
             type="button"
             onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-            className="w-8 h-8 rounded-full bg-[#141926] hover:bg-[#1D2538] border border-[#232D42] flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer shadow-md"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#141926] hover:bg-gray-100 dark:hover:bg-[#1D2538] border border-black/[0.08] dark:border-[#232D42] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-all cursor-pointer shadow-md"
             aria-label="Next Slide"
           >
             <ChevronRight className="w-4 h-4" />
@@ -687,16 +700,16 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
           <div className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
             POWERED BY VERIFIED ECOSYSTEM DATA
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-gray-500">
-            <span className="hover:text-gray-300 transition-colors">Premier League</span>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-gray-500 dark:text-gray-400">
+            <span className="hover:text-black dark:hover:text-gray-300 transition-colors">Premier League</span>
             <span>•</span>
-            <span className="hover:text-gray-300 transition-colors">Binance Telemetry</span>
+            <span className="hover:text-black dark:hover:text-gray-300 transition-colors">Binance Telemetry</span>
             <span>•</span>
-            <span className="hover:text-gray-300 transition-colors">TMDB Media</span>
+            <span className="hover:text-black dark:hover:text-gray-300 transition-colors">TMDB Media</span>
             <span>•</span>
-            <span className="hover:text-gray-300 transition-colors">Opta Stats</span>
+            <span className="hover:text-black dark:hover:text-gray-300 transition-colors">Opta Stats</span>
             <span>•</span>
-            <span className="hover:text-gray-300 transition-colors">CoinGecko</span>
+            <span className="hover:text-black dark:hover:text-gray-300 transition-colors">CoinGecko</span>
           </div>
         </div>
       </div>

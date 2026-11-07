@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { UnifiedNavbar } from './components/navigation/UnifiedNavbar';
 import { GlobalSearchModal } from './components/navigation/GlobalSearchModal';
@@ -15,6 +15,24 @@ import { AuthSession } from './types';
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 export const App: React.FC = () => {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pesaflip_theme');
+    if (saved) return saved === 'dark';
+    return true; // Default to signature Micro1 dark mode
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('pesaflip_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('pesaflip_theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
+
   const [session, setSession] = useState<AuthSession | null>(() => {
     try {
       const saved = localStorage.getItem('pesaflip_auth_session');
@@ -44,15 +62,29 @@ export const App: React.FC = () => {
   const hidePlatformShell = isLandingPage || isAuthPage;
 
   return (
-    <div className="min-h-screen bg-[#0D0F12] text-gray-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-black">
-      {/* Unified Global Platform Navigation - Shown when logged in or in-app */}
+    <div className={`min-h-screen flex flex-col antialiased relative overflow-x-hidden micro-grid-bg font-sans transition-colors duration-200 ${
+      isDark
+        ? 'bg-[#050608] text-[#EDEEF0] selection:bg-[#3E4FFF]/30 selection:text-[#8D9BFF]'
+        : 'bg-[#FAFAFB] text-[#111318] selection:bg-[#3E4FFF]/20 selection:text-[#3E4FFF]'
+    }`}>
+      {/* Background Micro1 Noise Layer & Ambient Electric Blue Spotlight */}
+      <div className="fixed inset-0 pointer-events-none grain-overlay z-0 opacity-40" />
+      <div className={`fixed top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[500px] bg-gradient-to-b from-[#3E4FFF]/[0.15] via-[#00D2FF]/[0.05] to-transparent blur-[120px] pointer-events-none z-0 ${
+        isDark ? 'opacity-100' : 'opacity-40'
+      }`} />
+
+      {/* Unified Global Platform Navigation */}
       {!hidePlatformShell && (
-        <UnifiedNavbar
-          userEmail={session?.user?.email}
-          userName={session?.user?.username}
-          onLogout={handleLogout}
-          onOpenSearch={() => setIsSearchOpen(true)}
-        />
+        <div className="relative z-50">
+          <UnifiedNavbar
+            userEmail={session?.user?.email}
+            userName={session?.user?.username}
+            onLogout={handleLogout}
+            onOpenSearch={() => setIsSearchOpen(true)}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+          />
+        </div>
       )}
 
       {/* Global Cross-Domain Omni-Search Modal */}
@@ -66,17 +98,17 @@ export const App: React.FC = () => {
 
       {/* Main Content Viewport */}
       <main
-        className={`flex-1 w-full mx-auto ${
+        className={`flex-1 w-full mx-auto relative z-10 ${
           hidePlatformShell
             ? 'w-full'
-            : 'max-w-7xl px-4 sm:px-6 lg:px-8 py-6'
+            : 'max-w-7xl px-4 sm:px-6 lg:px-8 py-8'
         }`}
       >
         <Routes>
           {/* Public Landing Page at root when not authenticated; redirects to /discover if signed in */}
           <Route
             path="/"
-            element={session ? <UnifiedHome apiBase={API_BASE} /> : <LandingPage />}
+            element={session ? <UnifiedHome apiBase={API_BASE} /> : <LandingPage isDark={isDark} onToggleTheme={toggleTheme} />}
           />
 
           {/* Authentication Gateway */}
@@ -92,6 +124,8 @@ export const App: React.FC = () => {
                     navigate('/sports');
                   }}
                   apiBase={API_BASE}
+                  isDark={isDark}
+                  onToggleTheme={toggleTheme}
                 />
               )
             }
@@ -135,9 +169,9 @@ export const App: React.FC = () => {
             }
           />
 
-          {/* 2. Crypto Intelligence Domain */}
+          {/* 2. TradingView Market Intelligence Domain */}
           <Route
-            path="/crypto"
+            path="/tradingview"
             element={
               session ? (
                 <CryptoIntelligenceHub apiBase={API_BASE} />
@@ -147,7 +181,7 @@ export const App: React.FC = () => {
             }
           />
           <Route
-            path="/crypto/:id"
+            path="/tradingview/:id"
             element={
               session ? (
                 <CryptoIntelligenceHub apiBase={API_BASE} />
@@ -156,6 +190,9 @@ export const App: React.FC = () => {
               )
             }
           />
+          {/* Legacy /crypto redirect to /tradingview */}
+          <Route path="/crypto" element={<Navigate to="/tradingview" replace />} />
+          <Route path="/crypto/:id" element={<Navigate to="/tradingview" replace />} />
 
           {/* 3. Entertainment & Media Discovery */}
           <Route

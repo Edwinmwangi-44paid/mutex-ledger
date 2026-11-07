@@ -1,65 +1,199 @@
 @import "tailwindcss";
 
+/* Configure manual class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', SFMono-Regular, monospace;
   
-  --color-binance-black: #0B0E11;
-  --color-binance-bg: #181A20;
-  --color-binance-card: #1E2329;
-  --color-binance-hover: #2B3139;
-  --color-binance-border: #2B313A;
+  /* Micro1 Core Color Tokens */
+  --color-canvas-base: #050608;
+  --color-canvas-subtle: #090B0F;
+  --color-canvas-card: #0E1118;
+  --color-canvas-card-hover: #141822;
+
+  /* Micro1 Brand Electric Blue & Accents */
+  --color-micro-blue: #3E4FFF;
+  --color-micro-blue-hover: #3140E8;
+  --color-micro-blue-glow: rgba(62, 79, 255, 0.25);
   
-  --color-binance-gold: #F0B90B;
-  --color-binance-gold-hover: #FCD535;
-  --color-binance-green: #0ECB81;
-  --color-binance-red: #F6465D;
-  
-  --color-binance-text: #EAECEF;
-  --color-binance-muted: #848E9C;
-  --color-binance-subtle: #474D57;
+  --color-brand-emerald: #10B981;
+  --color-brand-cyan: #00D2FF;
+  --color-brand-rose: #FF3B57;
 }
 
 :root {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #181A20;
-  color: #EAECEF;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Light Theme Variables & Overrides (Micro1 High-End Clean Light Mode) */
+html:not(.dark) {
+  background-color: #FAFAFB;
+  color: #111318;
+  color-scheme: light;
+}
+
+html.dark {
+  background-color: #050608;
+  color: #EDEEF0;
+  color-scheme: dark;
+}
+
+/* Micro1 Display Headings Tight Kerning */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+/* Micro1 Technical Monospace Details */
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
   letter-spacing: -0.01em;
 }
 
-/* Institutional custom subtle scrollbar */
+/* Subtle Engineering Grid Backdrop (Signature Micro1 / Vercel style) */
+.micro-grid-bg {
+  background-size: 32px 32px;
+}
+html.dark .micro-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+}
+html:not(.dark) .micro-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+
+/* Micro1 Grain / Film Texture */
+.grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+/* Micro1 Signature High-Contrast Card */
+html.dark .micro-card {
+  background: rgba(14, 17, 24, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 4px 20px -2px rgba(0, 0, 0, 0.5);
+}
+html:not(.dark) .micro-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 4px 20px -2px rgba(0, 0, 0, 0.06);
+}
+
+html.dark .micro-card-interactive {
+  background: rgba(14, 17, 24, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+html.dark .micro-card-interactive:hover {
+  background: rgba(20, 25, 36, 0.85);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 16px 36px -8px rgba(0, 0, 0, 0.7),
+    0 0 24px -2px rgba(62, 79, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+html:not(.dark) .micro-card-interactive {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 4px 16px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+html:not(.dark) .micro-card-interactive:hover {
+  background: #FFFFFF;
+  border-color: rgba(62, 79, 255, 0.35);
+  box-shadow: 
+    0 12px 28px -6px rgba(0, 0, 0, 0.08),
+    0 0 20px -2px rgba(62, 79, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Micro1 Electric Blue Radiant Spotlights */
+html.dark .micro-glow-blue {
+  background: radial-gradient(circle 650px at 50% -80px, rgba(62, 79, 255, 0.16), transparent 75%);
+}
+html:not(.dark) .micro-glow-blue {
+  background: radial-gradient(circle 650px at 50% -80px, rgba(62, 79, 255, 0.08), transparent 75%);
+}
+
+.micro-glow-cyan {
+  background: radial-gradient(circle 500px at 50% 0px, rgba(0, 210, 255, 0.12), transparent 70%);
+}
+
+/* Micro1 Primary Action Button (Solid high-contrast with subtle inner sheen) */
+.micro-btn-primary {
+  background: #3E4FFF;
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+    0 4px 16px -2px rgba(62, 79, 255, 0.45);
+  transition: all 0.18s ease;
+}
+.micro-btn-primary:hover {
+  background: #4C5CFF;
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+    0 6px 22px -2px rgba(62, 79, 255, 0.65);
+  transform: translateY(-1px);
+}
+.micro-btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Minimalist Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #181A20;
+  background: #050608;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2B3139;
-  border-radius: 2px;
+  background: #19202E;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #474D57;
+  background: #2D3A54;
 }
 
-.crypto-row-hover {
-  transition: background-color 0.15s ease-in-out;
-}
-.crypto-row-hover:hover {
-  background-color: #2B3139;
-}
-
-/* Institutional dark autofill override to prevent bright white background in Webkit/Chrome */
+/* Dark Autofill Override */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #0B0D12 inset !important;
-  -webkit-text-fill-color: #f3f4f6 !important;
+  -webkit-box-shadow: 0 0 0 1000px #090B0F inset !important;
+  -webkit-text-fill-color: #EDEEF0 !important;
   caret-color: #ffffff !important;
   transition: background-color 5000s ease-in-out 0s;
 }

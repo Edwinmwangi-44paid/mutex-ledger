@@ -68,26 +68,26 @@ const series = hub.popular_series || [];
 
   return (
     <div className="space-y-10 pb-12">
-      {/* Cinematic Hero Spotlight Banner (Inspired by Cinestream) */}
+      {/* Cinematic Hero Spotlight Banner (Inspired by Cinestream) - Micro-1 Polished */}
       {hero && (
-        <div className="relative rounded-3xl overflow-hidden min-h-[460px] flex items-end p-6 md:p-12 border border-white/10 shadow-2xl">
+        <div className="relative rounded-3xl overflow-hidden min-h-[460px] flex items-end p-6 md:p-12 glass-panel border border-white/[0.08] shadow-2xl group">
           {/* Background Image with Cinematic Vignette Overlay */}
           <img
             src={hero.backdrop}
             alt={hero.title}
-            className="absolute inset-0 w-full h-full object-cover object-center filter brightness-[0.65] contrast-[1.1]"
+            className="absolute inset-0 w-full h-full object-cover object-center filter brightness-[0.65] contrast-[1.1] group-hover:scale-105 transition-transform duration-700 ease-out"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0D0F12] via-[#0D0F12]/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0D0F12] via-[#0D0F12]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#080A0E] via-[#080A0E]/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#080A0E] via-[#080A0E]/50 to-transparent" />
 
           {/* Hero Content */}
           <div className="relative z-10 max-w-2xl space-y-4">
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-md bg-rose-600 font-extrabold text-[11px] text-white uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-lg bg-rose-600/90 font-extrabold text-[10px] text-white uppercase tracking-wider font-mono shadow-sm">
                 {hero.type}
               </span>
-              <span className="text-xs text-gray-300 font-semibold">{hero.year}</span>
-              <div className="flex items-center gap-1 text-amber-400 text-xs font-bold">
+              <span className="text-xs text-gray-300 font-semibold font-mono">{hero.year}</span>
+              <div className="flex items-center gap-1 text-amber-400 text-xs font-bold font-mono">
                 <Star className="w-3.5 h-3.5 fill-amber-400" />
                 <span>{hero.rating}</span>
               </div>

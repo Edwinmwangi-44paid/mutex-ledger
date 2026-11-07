@@ -299,7 +299,15 @@ async def get_fixture_details(fixture_id: str, session: AsyncSession = Depends(g
     Delivers full match details, facts, live statistics, Poisson AI analytics,
     team form, and historical H2H records for any fixture (SportAPI, ESPN, or Database).
     """
-    # 1. First, search active external fixtures pool (SportAPI.ai & live scoreboards)
+    # 0. First check live detailed match intelligence (SportAPI or ESPN live telemetry)
+    try:
+        detailed_pkg = await SportsDataService.get_fixture_live_details(fixture_id)
+        if detailed_pkg:
+            return detailed_pkg
+    except Exception as ex_det:
+        logger.warning(f"Error querying get_fixture_live_details for {fixture_id}: {ex_det}")
+
+    # 1. Next, search active external fixtures pool (SportAPI.ai & live scoreboards)
     ext_fixtures = await SportsDataService.fetch_external_live_data()
     matched_ext = None
     if ext_fixtures:

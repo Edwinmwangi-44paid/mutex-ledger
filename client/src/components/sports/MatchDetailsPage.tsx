@@ -116,42 +116,42 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/sports')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white px-3 py-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-white/[0.03] shadow-sm transition-all"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-[#3E4FFF]" />
           <span>Back to Match Centre</span>
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="text-[11px] text-gray-500 hidden sm:block">
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 hidden sm:block font-mono">
             Synced: {lastRefreshedAt.toLocaleTimeString()}
           </div>
           <button
             onClick={() => fetchMatch(true)}
             disabled={isRefreshingMatch}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#151922] hover:bg-[#1C222E] border border-[#232936] text-gray-300 hover:text-white transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-[#151922] hover:bg-gray-50 dark:hover:bg-[#1C222E] border border-black/[0.08] dark:border-[#232936] text-gray-800 dark:text-gray-200 shadow-sm transition-all"
             title="Refresh Match Data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshingMatch ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#3E4FFF] ${isRefreshingMatch ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Match Hero Scoreboard */}
-      <div className="rounded-2xl bg-gradient-to-b from-[#161B26] to-[#10131B] border border-[#232938] p-6 md:p-8 shadow-2xl">
-        <div className="flex flex-col items-center justify-center text-center space-y-6">
+      {/* Match Hero Scoreboard - Micro-1 Polished */}
+      <div className="relative rounded-3xl overflow-hidden micro-card p-6 md:p-10 shadow-xl border border-black/[0.08] dark:border-white/[0.08]">
+        <div className="flex flex-col items-center justify-center text-center space-y-6 relative z-10">
           {/* League and Venue info */}
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400">
             {fixture.league.logo && (
               <img src={fixture.league.logo} alt="" className="w-4 h-4 object-contain" />
             )}
-            <span>{fixture.league.name}</span>
-            <span>•</span>
-            <span>{fixture.venue || 'Stadium'}</span>
+            <span className="text-gray-900 dark:text-gray-200 font-bold">{fixture.league.name}</span>
+            <span className="text-gray-400 dark:text-gray-600">•</span>
+            <span>{fixture.venue || 'Arena'}</span>
             {isLive && (
-              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-[10px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold text-[10px] font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                 <span>{fixture.status === 'HT' ? 'HALF TIME' : `LIVE ${fixture.elapsed_minutes || 45}'`}</span>
               </span>
             )}
@@ -160,21 +160,24 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
           {/* Teams and Scores Banner */}
           <div className="w-full max-w-2xl grid grid-cols-3 items-center">
             {/* Home Team */}
-            <div className="flex flex-col items-center space-y-2">
-              <img
-                src={fixture.home_team.logo}
-                alt={fixture.home_team.name}
-                className="w-16 h-16 md:w-20 md:h-20 object-contain p-2 rounded-2xl bg-white/5 border border-white/10"
-              />
-              <span className="text-sm md:text-base font-bold text-white">
+            <div className="flex flex-col items-center space-y-2.5">
+              <div className="relative group">
+                <div className="absolute -inset-1 rounded-2xl bg-[#3E4FFF]/20 blur group-hover:bg-[#3E4FFF]/30 transition duration-300" />
+                <img
+                  src={fixture.home_team.logo}
+                  alt={fixture.home_team.name}
+                  className="relative w-16 h-16 md:w-20 md:h-20 object-contain p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-black/10 dark:border-white/10 shadow-sm"
+                />
+              </div>
+              <span className="text-sm md:text-base font-bold text-gray-900 dark:text-white tracking-tight">
                 {fixture.home_team.name}
               </span>
               <div className="flex items-center gap-1">
                 {h2h.home_form.map((res: string, idx: number) => (
                   <span
                     key={idx}
-                    className={`w-4 h-4 rounded text-[9px] font-bold flex items-center justify-center text-white ${
-                      res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-amber-500' : 'bg-red-500'
+                    className={`w-4 h-4 rounded-md text-[9px] font-bold flex items-center justify-center text-white font-mono shadow-sm ${
+                      res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-amber-500' : 'bg-rose-500'
                     }`}
                   >
                     {res}
@@ -186,11 +189,11 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             {/* Score / Kickoff */}
             <div className="flex flex-col items-center">
               {fixture.status === 'SCHEDULED' ? (
-                <div className="space-y-1">
-                  <div className="text-xl md:text-2xl font-black text-gray-400 tracking-widest">
+                <div className="space-y-1.5">
+                  <div className="text-xl md:text-2xl font-black text-gray-400 dark:text-gray-500 tracking-widest font-mono">
                     VS
                   </div>
-                  <div className="text-xs text-emerald-400 font-semibold">
+                  <div className="text-xs text-[#3E4FFF] font-bold px-2.5 py-0.5 rounded-full bg-[#3E4FFF]/10 border border-[#3E4FFF]/25 font-mono">
                     {new Date(fixture.kickoff_time).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -199,10 +202,10 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <div className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                  <div className="text-3xl md:text-5xl font-black text-gray-950 dark:text-white tracking-tight font-mono">
                     {fixture.home_score} - {fixture.away_score}
                   </div>
-                  <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">
+                  <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-widest font-mono">
                     {fixture.status === 'HT' ? 'Half Time' : (fixture.status === 'FT' ? 'Full Time' : `Live Minute ${fixture.elapsed_minutes || 45}'`)}
                   </div>
                 </div>
@@ -210,21 +213,24 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             </div>
 
             {/* Away Team */}
-            <div className="flex flex-col items-center space-y-2">
-              <img
-                src={fixture.away_team.logo}
-                alt={fixture.away_team.name}
-                className="w-16 h-16 md:w-20 md:h-20 object-contain p-2 rounded-2xl bg-white/5 border border-white/10"
-              />
-              <span className="text-sm md:text-base font-bold text-white">
+            <div className="flex flex-col items-center space-y-2.5">
+              <div className="relative group">
+                <div className="absolute -inset-1 rounded-2xl bg-indigo-500/20 blur group-hover:bg-indigo-500/30 transition duration-300" />
+                <img
+                  src={fixture.away_team.logo}
+                  alt={fixture.away_team.name}
+                  className="relative w-16 h-16 md:w-20 md:h-20 object-contain p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-black/10 dark:border-white/10 shadow-sm"
+                />
+              </div>
+              <span className="text-sm md:text-base font-bold text-gray-900 dark:text-white tracking-tight">
                 {fixture.away_team.name}
               </span>
               <div className="flex items-center gap-1">
                 {h2h.away_form.map((res: string, idx: number) => (
                   <span
                     key={idx}
-                    className={`w-4 h-4 rounded text-[9px] font-bold flex items-center justify-center text-white ${
-                      res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-amber-500' : 'bg-red-500'
+                    className={`w-4 h-4 rounded-md text-[9px] font-bold flex items-center justify-center text-white font-mono shadow-sm ${
+                      res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-amber-500' : 'bg-rose-500'
                     }`}
                   >
                     {res}
@@ -237,7 +243,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#1E232E] pb-3">
+      <div className="flex items-center gap-2 p-1.5 bg-white/70 dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.05] rounded-2xl backdrop-blur-md overflow-x-auto shadow-sm">
         {[
           { id: 'ai', label: 'AI Deep Analysis', icon: Sparkles },
           { id: 'predictions', label: 'All Prediction Markets', icon: Layers },
@@ -249,10 +255,10 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 cursor-pointer shrink-0 ${
                 activeTab === tab.id
-                  ? 'bg-emerald-500 text-black shadow-md'
-                  : 'bg-[#151922] text-gray-400 hover:text-white hover:bg-[#1C222E]'
+                  ? 'bg-[#3E4FFF] text-white shadow-md shadow-[#3E4FFF]/25 font-bold'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.03]'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -266,80 +272,80 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
       {activeTab === 'ai' && ai_analysis && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
-              <span className="text-xs text-gray-400 font-medium">Poisson Most Likely Result</span>
-              <div className="text-2xl font-black text-emerald-400">
+            <div className="rounded-2xl micro-card p-5 space-y-2 border border-black/[0.08] dark:border-white/[0.08]">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Poisson Most Likely Result</span>
+              <div className="text-2xl font-black text-[#3E4FFF] dark:text-[#8D9BFF]">
                 {ai_analysis.most_likely_outcome}
               </div>
-              <p className="text-xs text-gray-400">
-                Predicted score: <span className="text-white font-bold">{ai_analysis.predicted_score}</span>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Predicted score: <span className="text-gray-950 dark:text-white font-bold font-mono">{ai_analysis.predicted_score}</span>
               </p>
             </div>
 
-            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
-              <span className="text-xs text-gray-400 font-medium">Both Teams To Score (BTTS)</span>
-              <div className="text-2xl font-black text-white">
+            <div className="rounded-2xl micro-card p-5 space-y-2 border border-black/[0.08] dark:border-white/[0.08]">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Both Teams To Score (BTTS)</span>
+              <div className="text-2xl font-black text-gray-950 dark:text-white font-mono">
                 {ai_analysis.btts_probability}%
               </div>
-              <p className="text-xs text-gray-400">
-                Expected Goal Range: <span className="text-white font-bold">{ai_analysis.predicted_goals_range}</span>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Expected Goal Range: <span className="text-gray-950 dark:text-white font-bold">{ai_analysis.predicted_goals_range}</span>
               </p>
             </div>
 
-            <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-2">
-              <span className="text-xs text-gray-400 font-medium">Engine Confidence</span>
-              <div className="text-2xl font-black text-cyan-400">
+            <div className="rounded-2xl micro-card p-5 space-y-2 border border-black/[0.08] dark:border-white/[0.08]">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Engine Confidence</span>
+              <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
                 {ai_analysis.confidence_level}
               </div>
-              <p className="text-xs text-gray-400">
-                Version: <span className="text-white font-bold">{ai_analysis.engine_version}</span>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Version: <span className="text-gray-950 dark:text-white font-bold font-mono">{ai_analysis.engine_version}</span>
               </p>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-4">
+          <div className="rounded-2xl micro-card p-6 space-y-4 border border-black/[0.08] dark:border-white/[0.08]">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-200">1X2 Match Probabilities</h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">1X2 Match Probabilities</h3>
               <button
                 onClick={handleRunDeepAnalysis}
                 disabled={isRefreshingAI}
-                className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+                className="flex items-center gap-1.5 text-xs text-[#3E4FFF] dark:text-[#8D9BFF] hover:underline font-semibold cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAI ? 'animate-spin' : ''}`} />
                 <span>Re-simulate Poisson Matrix</span>
               </button>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
-                <div className="text-xs text-gray-400 font-semibold">{fixture.home_team.name} Win</div>
-                <div className="text-xl font-bold text-white">
+              <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] text-center space-y-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold truncate">{fixture.home_team.name} Win</div>
+                <div className="text-xl font-bold text-gray-950 dark:text-white font-mono">
                   {ai_analysis.probabilities_1x2.home_win}%
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
-                <div className="text-xs text-gray-400 font-semibold">Draw</div>
-                <div className="text-xl font-bold text-amber-400">
+              <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] text-center space-y-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold">Draw</div>
+                <div className="text-xl font-bold text-amber-500 dark:text-amber-400 font-mono">
                   {ai_analysis.probabilities_1x2.draw}%
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-[#0F131C] border border-[#1C212E] text-center space-y-1">
-                <div className="text-xs text-gray-400 font-semibold">{fixture.away_team.name} Win</div>
-                <div className="text-xl font-bold text-white">
+              <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] text-center space-y-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 font-semibold truncate">{fixture.away_team.name} Win</div>
+                <div className="text-xl font-bold text-gray-950 dark:text-white font-mono">
                   {ai_analysis.probabilities_1x2.away_win}%
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-4">
-            <h3 className="text-sm font-bold text-gray-200">Tactical Summary &amp; Key Factors</h3>
-            <p className="text-xs text-gray-300 leading-relaxed bg-[#0F131C] p-4 rounded-xl border border-[#1C212E]">
+          <div className="rounded-2xl micro-card p-6 space-y-4 border border-black/[0.08] dark:border-white/[0.08]">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Tactical Summary &amp; Key Factors</h3>
+            <p className="text-xs text-gray-800 dark:text-gray-300 leading-relaxed bg-black/[0.02] dark:bg-white/[0.02] p-4 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
               {ai_analysis.tactical_summary}
             </p>
             <div className="space-y-2">
               {ai_analysis.key_factors.map((factor: string, idx: number) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-gray-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                <div key={idx} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3E4FFF] mt-1.5 shrink-0" />
                   <span>{factor}</span>
                 </div>
               ))}
@@ -354,27 +360,27 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
           {ai_analysis.market_predictions.map((pred: any) => (
             <div
               key={pred.id}
-              className="rounded-2xl bg-[#131720] border border-[#1E2430] p-5 space-y-3"
+              className="rounded-2xl micro-card p-5 space-y-3 border border-black/[0.08] dark:border-white/[0.08]"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {pred.category} • {pred.market_name}
                 </span>
                 <span
                   className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${
                     pred.confidence === 'HIGH'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                   }`}
                 >
                   {pred.confidence} CONFIDENCE
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-white">{pred.selection}</span>
-                <span className="text-lg font-black text-emerald-400">{pred.probability_pct}%</span>
+                <span className="text-base font-bold text-gray-900 dark:text-white">{pred.selection}</span>
+                <span className="text-lg font-black text-[#3E4FFF] dark:text-[#8D9BFF] font-mono">{pred.probability_pct}%</span>
               </div>
-              <p className="text-xs text-gray-400 leading-normal">{pred.explanation}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-normal">{pred.explanation}</p>
             </div>
           ))}
         </div>
@@ -382,7 +388,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
 
       {/* TAB 3: MATCH STATISTICS */}
       {activeTab === 'stats' && (
-        <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-5">
+        <div className="rounded-2xl micro-card p-6 space-y-5 border border-black/[0.08] dark:border-white/[0.08]">
           {[
             { label: 'Ball Possession (%)', home: statistics?.home_possession || 50, away: statistics?.away_possession || 50 },
             { label: 'Total Shots', home: statistics?.home_shots_total || 0, away: statistics?.away_shots_total || 0 },
@@ -393,19 +399,19 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             { label: 'Yellow Cards', home: statistics?.home_yellow_cards || 0, away: statistics?.away_yellow_cards || 0 },
           ].map((stat, idx) => (
             <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold text-gray-300">
-                <span>{stat.home}</span>
-                <span className="text-gray-400">{stat.label}</span>
-                <span>{stat.away}</span>
+              <div className="flex justify-between text-xs font-semibold text-gray-800 dark:text-gray-200">
+                <span className="font-mono">{stat.home}</span>
+                <span className="text-gray-500 dark:text-gray-400">{stat.label}</span>
+                <span className="font-mono">{stat.away}</span>
               </div>
-              <div className="w-full bg-[#0F131C] h-2 rounded-full overflow-hidden flex">
+              <div className="w-full bg-black/[0.06] dark:bg-white/[0.06] h-2.5 rounded-full overflow-hidden flex">
                 <div
                   style={{ width: `${(Number(stat.home) / (Number(stat.home) + Number(stat.away) || 1)) * 100}%` }}
-                  className="bg-emerald-500 h-full"
+                  className="bg-[#3E4FFF] h-full"
                 />
                 <div
                   style={{ width: `${(Number(stat.away) / (Number(stat.home) + Number(stat.away) || 1)) * 100}%` }}
-                  className="bg-cyan-500 h-full"
+                  className="bg-indigo-400 h-full"
                 />
               </div>
             </div>
@@ -415,22 +421,22 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
 
       {/* TAB 4: H2H & RECENT ENCOUNTERS */}
       {activeTab === 'h2h' && h2h && (
-        <div className="rounded-2xl bg-[#131720] border border-[#1E2430] p-6 space-y-4">
-          <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">
+        <div className="rounded-2xl micro-card p-6 space-y-4 border border-black/[0.08] dark:border-white/[0.08]">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-200 uppercase tracking-wider">
             Historical Head-to-Head Encounters
           </h3>
-          <div className="grid grid-cols-3 text-center p-4 rounded-xl bg-[#0F131C] border border-[#1C212E]">
+          <div className="grid grid-cols-3 text-center p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08]">
             <div>
-              <div className="text-2xl font-black text-white">{h2h.home_wins}</div>
-              <div className="text-xs text-gray-400">{fixture.home_team.name} Wins</div>
+              <div className="text-2xl font-black text-gray-950 dark:text-white font-mono">{h2h.home_wins}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 truncate px-1">{fixture.home_team.name} Wins</div>
             </div>
             <div>
-              <div className="text-2xl font-black text-amber-400">{h2h.draws}</div>
-              <div className="text-xs text-gray-400">Draws</div>
+              <div className="text-2xl font-black text-amber-500 dark:text-amber-400 font-mono">{h2h.draws}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Draws</div>
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{h2h.away_wins}</div>
-              <div className="text-xs text-gray-400">{fixture.away_team.name} Wins</div>
+              <div className="text-2xl font-black text-gray-950 dark:text-white font-mono">{h2h.away_wins}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 truncate px-1">{fixture.away_team.name} Wins</div>
             </div>
           </div>
 
@@ -438,13 +444,13 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             {h2h.recent_matches.map((m: any, idx: number) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 rounded-xl bg-[#0F131C] border border-[#1A1E29] text-xs"
+                className="flex items-center justify-between p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] text-xs"
               >
-                <span className="text-gray-400">{m.date}</span>
-                <span className="font-semibold text-white">
+                <span className="text-gray-500 dark:text-gray-400 font-mono">{m.date}</span>
+                <span className="font-semibold text-gray-900 dark:text-white font-mono">
                   Score: {m.home_score} - {m.away_score}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">
+                <span className="px-2 py-0.5 rounded bg-[#3E4FFF]/10 text-[#3E4FFF] dark:text-[#8D9BFF] font-bold border border-[#3E4FFF]/20">
                   {m.winner}
                 </span>
               </div>

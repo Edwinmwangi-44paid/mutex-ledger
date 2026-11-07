@@ -96,18 +96,18 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
 
   return (
     <div className="space-y-6">
-      {/* Editorial Header */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-blue-950/40 via-[#111726] to-[#0D0F12] border border-blue-900/30 p-6 md:p-8">
+      {/* Editorial Header - Micro-1 Polished */}
+      <div className="relative rounded-3xl overflow-hidden glass-panel border border-white/[0.08] p-6 md:p-8 mesh-glow-cyan">
         <div className="max-w-2xl space-y-3 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold shadow-inner">
             <ChartIcon className="w-3.5 h-3.5" />
             <span>Pure Market Intelligence • Non-Custodial Data Feed</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
             Cryptocurrency Market Intelligence
           </h1>
-          <p className="text-sm md:text-base text-gray-300">
-            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent coin metrics.
+          <p className="text-sm md:text-base text-gray-400 leading-relaxed">
+            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent on-chain coin metrics.
           </p>
         </div>
       </div>
@@ -115,9 +115,9 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
       {/* Overview Metric Cards */}
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-[#121620] border border-[#1F2533] space-y-1">
+          <div className="p-4.5 rounded-2xl glass-panel border border-white/[0.07] space-y-1.5 shadow-sm">
             <span className="text-xs text-gray-400 font-medium">Total Market Cap</span>
-            <div className="text-lg md:text-xl font-bold text-white">
+            <div className="text-lg md:text-xl font-bold text-white font-mono tracking-tight">
               ${(overview.total_market_cap / 1e12).toFixed(2)} Trillion
             </div>
             <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
@@ -126,17 +126,17 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#121620] border border-[#1F2533] space-y-1">
+          <div className="p-4.5 rounded-2xl glass-panel border border-white/[0.07] space-y-1.5 shadow-sm">
             <span className="text-xs text-gray-400 font-medium">Bitcoin Dominance</span>
-            <div className="text-lg md:text-xl font-bold text-white">
+            <div className="text-lg md:text-xl font-bold text-white font-mono tracking-tight">
               {overview.btc_dominance}%
             </div>
             <span className="text-[11px] text-gray-500">Global Share</span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#121620] border border-[#1F2533] space-y-1">
+          <div className="p-4.5 rounded-2xl glass-panel border border-white/[0.07] space-y-1.5 shadow-sm">
             <span className="text-xs text-gray-400 font-medium">24h Global Volume</span>
-            <div className="text-lg md:text-xl font-bold text-white">
+            <div className="text-lg md:text-xl font-bold text-white font-mono tracking-tight">
               ${(overview.total_volume_24h / 1e9).toFixed(1)} Billion
             </div>
             <span className="text-[11px] text-gray-500">Liquidity Volume</span>
@@ -197,15 +197,15 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
             </div>
 
             {/* Timeframe Controls */}
-            <div className="flex items-center gap-1.5 border-b border-[#1E2433] pb-3">
+            <div className="flex items-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl w-fit backdrop-blur-md">
               {['1h', '24h', '7d', '30d', '90d', '1y', 'all'].map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all ${
+                  className={`px-3 py-1 rounded-xl text-xs font-mono font-bold uppercase transition-all active:scale-95 cursor-pointer ${
                     timeframe === tf
-                      ? 'bg-cyan-500 text-black shadow-md'
-                      : 'bg-[#181D2A] text-gray-400 hover:text-white'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black shadow-lg shadow-cyan-500/20 font-bold'
+                      : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
                   {tf}
@@ -214,7 +214,7 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
             </div>
 
             {/* Interactive SVG Chart Canvas */}
-            <div className="h-64 relative flex items-center justify-center bg-[#0F121A] rounded-xl border border-[#1A202D] p-3">
+            <div className="h-64 relative flex items-center justify-center bg-black/40 rounded-2xl border border-white/[0.06] p-3 shadow-inner">
               {loadingChart ? (
                 <div className="text-xs text-gray-400 animate-pulse">Generating price curve...</div>
               ) : chartData && chartData.points?.length > 1 ? (

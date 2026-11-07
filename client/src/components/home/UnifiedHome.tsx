@@ -48,11 +48,11 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
 
   return (
     <div className="space-y-12 pb-16">
-      {/* Editorial Platform Hero */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#121824] via-[#0F131C] to-[#0A0D12] border border-[#202738] p-8 md:p-12 shadow-2xl">
+      {/* Editorial Platform Hero - Micro-1 Hyper-Polish */}
+      <div className="relative rounded-3xl overflow-hidden glass-panel border border-white/[0.08] p-8 md:p-14 shadow-2xl mesh-glow-emerald">
         <div className="max-w-3xl space-y-4 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             <span>PesaFlip Unified Ecosystem</span>
           </div>
 
@@ -60,14 +60,14 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
             Sports Intelligence. Market Analytics. Cinematic Discovery.
           </h1>
 
-          <p className="text-sm md:text-base text-gray-300 leading-relaxed max-w-2xl">
-            A cohesive digital platform delivering real-time AI football match forecasts, non-custodial crypto market tracking, and legal streaming entertainment discovery.
+          <p className="text-sm md:text-base text-gray-400 leading-relaxed max-w-2xl">
+            A cohesive digital platform delivering real-time multi-sport forecasts, non-custodial crypto market tracking, and legal streaming entertainment discovery.
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3 pt-3">
             <button
               onClick={() => navigate('/sports')}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-2 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
             >
               <Trophy className="w-4 h-4" />
               <span>Explore Match Centre</span>
@@ -75,7 +75,7 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
 
             <button
               onClick={() => navigate('/crypto')}
-              className="px-5 py-2.5 rounded-xl bg-[#1A202E] hover:bg-[#222A3D] text-gray-200 border border-[#2B354A] font-semibold text-xs flex items-center gap-2 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 border border-white/10 font-semibold text-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
               <LineChart className="w-4 h-4 text-cyan-400" />
               <span>Crypto Markets</span>
