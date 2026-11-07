@@ -1,3 +1,6 @@
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import logging
 from contextlib import asynccontextmanager
 from decimal import Decimal
@@ -132,6 +135,43 @@ app.include_router(ledger.router, prefix=settings.API_V1_STR)
 app.include_router(sports.router, prefix=settings.API_V1_STR)
 app.include_router(intelligence.router, prefix=settings.API_V1_STR)
 app.include_router(discovery.router, prefix=settings.API_V1_STR)
+
+# -------------------------------------------------------------
+# Fullstack Frontend Serving & Single Page App (SPA) Fallback
+# -------------------------------------------------------------
+CLIENT_DIST_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "client", "dist"))
+ASSETS_DIR = os.path.join(CLIENT_DIST_DIR, "assets")
+
+if os.path.isdir(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+@app.get("/{full_path:path}", tags=["Frontend"])
+@app.head("/{full_path:path}", tags=["Frontend"])
+async def serve_frontend(full_path: str):
+    # Don't intercept API routes or Swagger Docs
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json", "health"]:
+        index_file = os.path.join(CLIENT_DIST_DIR, "index.html")
+        if os.path.isfile(index_file):
+            return FileResponse(index_file)
+        return {"status": "ONLINE", "service": settings.PROJECT_NAME}
+
+    target_file = os.path.join(CLIENT_DIST_DIR, full_path)
+    if full_path and os.path.isfile(target_file):
+        return FileResponse(target_file)
+    
+    # SPA route fallback (e.g. /sports, /wallets)
+    index_file = os.path.join(CLIENT_DIST_DIR, "index.html")
+    if os.path.isfile(index_file):
+        return FileResponse(index_file)
+
+    return {
+        "status": "ONLINE",
+        "service": settings.PROJECT_NAME,
+        "docs": "/docs",
+        "health": "/health",
+        "api_v1": settings.API_V1_STR
+    }
+
 
 
 @app.get("/", tags=["Root"])
