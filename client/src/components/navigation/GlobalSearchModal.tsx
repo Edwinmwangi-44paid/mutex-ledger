@@ -161,12 +161,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                 </div>
               )}
 
-              {/* Crypto Results */}
+              {/* TradingView Results */}
               {results.results?.crypto?.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <LineChart className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Crypto Intelligence</span>
+                    <span>TradingView Intelligence</span>
                   </div>
                   <div className="space-y-1">
                     {results.results.crypto.map((item: any) => (

@@ -136,16 +136,16 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
           </div>
         </div>
 
-        {/* DOMAIN 2: CRYPTO INTELLIGENCE */}
+        {/* DOMAIN 2: TRADINGVIEW INTELLIGENCE */}
         <div className="rounded-3xl bg-[#12151E] border border-[#202636] p-6 space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#1E232E]">
               <div className="flex items-center gap-2 text-sm font-extrabold text-white">
                 <LineChart className="w-4 h-4 text-cyan-400" />
-                <span>Crypto Market Leaders</span>
+                <span>TradingView Markets</span>
               </div>
               <button
-                onClick={() => navigate('/crypto')}
+                onClick={() => navigate('/tradingview')}
                 className="text-xs text-cyan-400 font-semibold hover:underline flex items-center gap-1"
               >
                 <span>Analytics</span>
@@ -157,7 +157,7 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
               {feed.crypto_highlights?.top_coins?.map((c: any) => (
                 <div
                   key={c.id}
-                  onClick={() => navigate('/crypto')}
+                  onClick={() => navigate('/tradingview')}
                   className="flex items-center justify-between p-3 rounded-2xl bg-[#161B26] hover:bg-[#1C2230] border border-[#232A3B] transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-3">

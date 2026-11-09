@@ -333,9 +333,9 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
               <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
             </div>
 
-            {/* Crypto domain */}
+            {/* TradingView domain */}
             <div
-              onClick={() => navigate('/crypto')}
+              onClick={() => navigate('/tradingview')}
               className="p-3 rounded-2xl bg-[#141924]/60 hover:bg-[#1A202E] border border-[#1E2738] flex items-center justify-between transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
@@ -344,7 +344,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white group-hover:text-cyan-400 transition-colors">
-                    Crypto Intelligence
+                    TradingView Intelligence
                   </div>
                   <div className="text-[10px] text-gray-400">Real-time Orderbooks &amp; Metrics</div>
                 </div>

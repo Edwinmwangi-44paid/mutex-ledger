@@ -104,7 +104,7 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
             <span>Pure Market Intelligence • Non-Custodial Data Feed</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            Cryptocurrency Market Intelligence
+            TradingView Market Intelligence
           </h1>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">
             Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent on-chain coin metrics.

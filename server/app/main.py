@@ -149,17 +149,14 @@ if os.path.isdir(ASSETS_DIR):
 @app.head("/{full_path:path}", tags=["Frontend"])
 async def serve_frontend(full_path: str):
     # Don't intercept API routes or Swagger Docs
-    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json", "health"]:
-        index_file = os.path.join(CLIENT_DIST_DIR, "index.html")
-        if os.path.isfile(index_file):
-            return FileResponse(index_file)
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
         return {"status": "ONLINE", "service": settings.PROJECT_NAME}
 
     target_file = os.path.join(CLIENT_DIST_DIR, full_path)
     if full_path and os.path.isfile(target_file):
         return FileResponse(target_file)
     
-    # SPA route fallback (e.g. /sports, /wallets)
+    # SPA route fallback (e.g. /sports, /wallets, /tradingview, /auth, /profile)
     index_file = os.path.join(CLIENT_DIST_DIR, "index.html")
     if os.path.isfile(index_file):
         return FileResponse(index_file)
@@ -172,11 +169,12 @@ async def serve_frontend(full_path: str):
         "api_v1": settings.API_V1_STR
     }
 
-
-
 @app.get("/", tags=["Root"])
 @app.head("/", tags=["Root"])
 async def root():
+    index_file = os.path.join(CLIENT_DIST_DIR, "index.html")
+    if os.path.isfile(index_file):
+        return FileResponse(index_file)
     return {
         "status": "ONLINE",
         "service": settings.PROJECT_NAME,
