@@ -74,11 +74,11 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
             </button>
 
             <button
-              onClick={() => navigate('/crypto')}
+              onClick={() => navigate('/tradingview')}
               className="px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 border border-white/10 font-semibold text-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
               <LineChart className="w-4 h-4 text-cyan-400" />
-              <span>Crypto Markets</span>
+              <span>TradingView Markets</span>
             </button>
 
             <button
