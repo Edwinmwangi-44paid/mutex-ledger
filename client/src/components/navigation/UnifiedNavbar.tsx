@@ -212,40 +212,70 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-white/[0.07] bg-[#080A0E] px-4 pt-3 pb-6 space-y-1">
+        <div className={`md:hidden border-t px-4 pt-3 pb-6 space-y-1 transition-colors duration-200 shadow-xl ${
+          isDark
+            ? 'border-white/[0.08] bg-[#090B0F]'
+            : 'border-black/[0.08] bg-[#FFFFFF]'
+        }`}>
           {userEmail && (
             <NavLink
               to="/profile"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium mb-2 ${
-                location.pathname === '/profile' ? 'bg-white/[0.08] text-white font-semibold' : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold mb-2 transition-all ${
+                location.pathname === '/profile'
+                  ? isDark
+                    ? 'bg-white/[0.10] text-white shadow-sm'
+                    : 'bg-black/[0.06] text-black shadow-sm'
+                  : isDark
+                    ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                    : 'text-emerald-700 bg-emerald-500/10 border border-emerald-500/20'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <User className="w-4 h-4 text-emerald-400" />
+                <User className="w-4 h-4 text-emerald-500" />
                 <span>My Profile ({userName?.trim() || userEmail.split('@')[0]})</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-emerald-400" />
+              <ChevronRight className="w-4 h-4 text-emerald-500" />
             </NavLink>
           )}
 
           {navLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = location.pathname === link.path;
+            const isActive = location.pathname === link.path ||
+              (link.path !== '/' && location.pathname.startsWith(link.path));
+
             return (
               <NavLink
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium ${
-                  isActive ? 'bg-white/[0.08] text-white font-semibold' : 'text-gray-300 hover:bg-white/[0.04]'
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                  isActive
+                    ? isDark
+                      ? 'bg-white/[0.08] text-white font-bold border border-white/[0.08] shadow-sm'
+                      : 'bg-black/[0.05] text-black font-bold border border-black/[0.08] shadow-sm'
+                    : isDark
+                      ? 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
+                      : 'text-gray-700 hover:text-black hover:bg-black/[0.03]'
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-gray-400'}`} />
+                  <Icon className={`w-4 h-4 transition-colors ${
+                    isActive
+                      ? 'text-[#3E4FFF]'
+                      : isDark
+                        ? 'text-gray-400'
+                        : 'text-gray-500'
+                  }`} />
                   <span>{link.label}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                <ChevronRight className={`w-4 h-4 transition-colors ${
+                  isActive
+                    ? 'text-[#3E4FFF]'
+                    : isDark
+                      ? 'text-gray-600'
+                      : 'text-gray-400'
+                }`} />
               </NavLink>
             );
           })}
@@ -256,7 +286,11 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
                 setMobileMenuOpen(false);
                 onLogout();
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 mt-2"
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all mt-2 ${
+                isDark
+                  ? 'text-rose-400 hover:bg-rose-500/10'
+                  : 'text-rose-600 hover:bg-rose-500/10'
+              }`}
             >
               <div className="flex items-center space-x-3">
                 <LogOut className="w-4 h-4" />

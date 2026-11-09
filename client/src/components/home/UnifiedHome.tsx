@@ -49,25 +49,25 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
   return (
     <div className="space-y-12 pb-16">
       {/* Editorial Platform Hero - Micro-1 Hyper-Polish */}
-      <div className="relative rounded-3xl overflow-hidden glass-panel border border-white/[0.08] p-8 md:p-14 shadow-2xl mesh-glow-emerald">
+      <div className="relative rounded-3xl overflow-hidden micro-card p-8 md:p-14 shadow-2xl">
         <div className="max-w-3xl space-y-4 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-inner">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
             <span>PesaFlip Unified Ecosystem</span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+          <h1 className="text-3xl md:text-5xl font-black text-gray-950 dark:text-white tracking-tight leading-tight">
             Sports Intelligence. Market Analytics. Cinematic Discovery.
           </h1>
 
-          <p className="text-sm md:text-base text-gray-400 leading-relaxed max-w-2xl">
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl">
             A cohesive digital platform delivering real-time multi-sport forecasts, non-custodial crypto market tracking, and legal streaming entertainment discovery.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-3">
             <button
               onClick={() => navigate('/sports')}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
             >
               <Trophy className="w-4 h-4" />
               <span>Explore Match Centre</span>
@@ -75,17 +75,17 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
 
             <button
               onClick={() => navigate('/tradingview')}
-              className="px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 border border-white/10 font-semibold text-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-gray-800 dark:text-gray-200 border border-black/10 dark:border-white/10 font-semibold text-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
-              <LineChart className="w-4 h-4 text-cyan-400" />
+              <LineChart className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
               <span>TradingView Markets</span>
             </button>
 
             <button
               onClick={() => navigate('/entertainment')}
-              className="px-5 py-2.5 rounded-xl bg-[#1A202E] hover:bg-[#222A3D] text-gray-200 border border-[#2B354A] font-semibold text-xs flex items-center gap-2 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/20 font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Film className="w-4 h-4 text-rose-400" />
+              <Film className="w-4 h-4 text-rose-500 dark:text-rose-400" />
               <span>Movie Hub</span>
             </button>
           </div>
@@ -95,16 +95,16 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
       {/* Cross-Domain Tri-Section Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* DOMAIN 1: SPORTS INTELLIGENCE */}
-        <div className="rounded-3xl bg-[#12151E] border border-[#202636] p-6 space-y-4 flex flex-col justify-between">
+        <div className="rounded-3xl micro-card p-6 space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E232E]">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-white">
-                <Trophy className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-gray-950 dark:text-white">
+                <Trophy className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                 <span>Featured Matches</span>
               </div>
               <button
                 onClick={() => navigate('/sports')}
-                className="text-xs text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+                className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>View All</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -116,17 +116,17 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
                 <div
                   key={m.id}
                   onClick={() => navigate(`/sports/${m.id}`)}
-                  className="p-3 rounded-2xl bg-[#161B26] hover:bg-[#1C2230] border border-[#232A3B] transition-all cursor-pointer space-y-1.5"
+                  className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] transition-all cursor-pointer space-y-1.5"
                 >
-                  <div className="flex items-center justify-between text-[11px] text-gray-400">
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
                     <span>{m.league}</span>
-                    <span className="font-bold text-red-400">{m.status}</span>
+                    <span className="font-bold text-rose-500 dark:text-red-400">{m.status}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-white">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-900 dark:text-white">
                     <span>{m.home_team} vs {m.away_team}</span>
                     {m.score && <span>{m.score}</span>}
                   </div>
-                  <div className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                     <Sparkles className="w-3 h-3" />
                     <span>AI Pick: {m.ai_outcome}</span>
                   </div>
@@ -137,16 +137,16 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
         </div>
 
         {/* DOMAIN 2: TRADINGVIEW INTELLIGENCE */}
-        <div className="rounded-3xl bg-[#12151E] border border-[#202636] p-6 space-y-4 flex flex-col justify-between">
+        <div className="rounded-3xl micro-card p-6 space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E232E]">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-white">
-                <LineChart className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-gray-950 dark:text-white">
+                <LineChart className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
                 <span>TradingView Markets</span>
               </div>
               <button
                 onClick={() => navigate('/tradingview')}
-                className="text-xs text-cyan-400 font-semibold hover:underline flex items-center gap-1"
+                className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Analytics</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -158,20 +158,20 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
                 <div
                   key={c.id}
                   onClick={() => navigate('/tradingview')}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-[#161B26] hover:bg-[#1C2230] border border-[#232A3B] transition-all cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <img src={c.logo} alt={c.name} className="w-7 h-7 rounded-full" />
                     <div>
-                      <div className="text-xs font-bold text-white">{c.name}</div>
-                      <div className="text-[10px] text-gray-400 uppercase">{c.symbol}</div>
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">{c.name}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{c.symbol}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs font-bold text-white">${c.price.toLocaleString()}</div>
+                    <div className="text-xs font-bold text-gray-900 dark:text-white">${c.price.toLocaleString()}</div>
                     <div
                       className={`text-[10px] font-semibold ${
-                        c.change_24h >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        c.change_24h >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
                       }`}
                     >
                       {c.change_24h >= 0 ? '+' : ''}{c.change_24h}%
@@ -184,16 +184,16 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
         </div>
 
         {/* DOMAIN 3: ENTERTAINMENT DISCOVERY */}
-        <div className="rounded-3xl bg-[#12151E] border border-[#202636] p-6 space-y-4 flex flex-col justify-between">
+        <div className="rounded-3xl micro-card p-6 space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E232E]">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-white">
-                <Film className="w-4 h-4 text-rose-400" />
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-gray-950 dark:text-white">
+                <Film className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                 <span>Cinematic Trending</span>
               </div>
               <button
                 onClick={() => navigate('/entertainment')}
-                className="text-xs text-rose-400 font-semibold hover:underline flex items-center gap-1"
+                className="text-xs text-rose-500 dark:text-rose-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Discover</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -205,7 +205,7 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
                 <div
                   key={m.id}
                   onClick={() => navigate('/entertainment')}
-                  className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#161B26] border border-[#232A3B] hover:border-rose-500/50 transition-all cursor-pointer shadow-md"
+                  className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-rose-500/50 transition-all cursor-pointer shadow-md"
                 >
                   <img src={m.poster} alt={m.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2.5">
@@ -219,8 +219,8 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
       </div>
 
       {/* AI Cross-Domain Insights Section */}
-      <div className="rounded-3xl bg-gradient-to-r from-[#121926] via-[#151421] to-[#12161E] border border-indigo-900/30 p-6 md:p-8 space-y-4">
-        <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+      <div className="rounded-3xl micro-card p-6 md:p-8 space-y-4">
+        <div className="flex items-center gap-2 text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider">
           <Sparkles className="w-4 h-4" />
           <span>Cross-Domain AI Briefs</span>
         </div>
@@ -229,13 +229,13 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
           {feed.ai_insights?.map((ins: any, idx: number) => (
             <div
               key={idx}
-              className="p-4 rounded-2xl bg-[#0D1017]/80 border border-[#1E2330] space-y-2"
+              className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2"
             >
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 uppercase">
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 uppercase">
                 {ins.domain}
               </span>
-              <h4 className="text-sm font-bold text-white">{ins.title}</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">{ins.summary}</p>
+              <h4 className="text-sm font-bold text-gray-950 dark:text-white">{ins.title}</h4>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{ins.summary}</p>
             </div>
           ))}
         </div>
