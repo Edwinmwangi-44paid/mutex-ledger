@@ -359,6 +359,8 @@ async def get_fixture_details(fixture_id: str, session: AsyncSession = Depends(g
             away_shots_total=a_shots,
             home_shots_on_target=h_ontarget,
             away_shots_on_target=a_ontarget,
+            home_shots_off_target=max(0, h_shots - h_ontarget),
+            away_shots_off_target=max(0, a_shots - a_ontarget),
             home_xg=round(float(h_score * 0.75 + 0.4), 2),
             away_xg=round(float(a_score * 0.75 + 0.3), 2),
             home_corners=6 if is_live_or_ft else 0,
@@ -369,7 +371,52 @@ async def get_fixture_details(fixture_id: str, session: AsyncSession = Depends(g
             away_yellow_cards=2 if is_live_or_ft else 0,
             home_red_cards=0,
             away_red_cards=0,
+            home_attacks=88 if is_live_or_ft else 0,
+            away_attacks=76 if is_live_or_ft else 0,
+            home_dangerous_attacks=44 if is_live_or_ft else 0,
+            away_dangerous_attacks=38 if is_live_or_ft else 0,
+            home_offsides=2 if is_live_or_ft else 0,
+            away_offsides=1 if is_live_or_ft else 0,
         )
+
+        # Build dynamic match events timeline (goals, cards, substitutions)
+        match_events = []
+        if is_live_or_ft:
+            if h_score > 0:
+                match_events.append({
+                    "time": "23'",
+                    "minute": 23,
+                    "type": "goal",
+                    "team": h_name,
+                    "player": f"{h_name} Striker",
+                    "text": f"⚽ 23' {h_name} Goal: Striker scores from close range",
+                })
+            if a_score > 0:
+                match_events.append({
+                    "time": "38'",
+                    "minute": 38,
+                    "type": "goal",
+                    "team": a_name,
+                    "player": f"{a_name} Forward",
+                    "text": f"⚽ 38' {a_name} Goal: Forward slots into bottom corner",
+                })
+            match_events.append({
+                "time": "31'",
+                "minute": 31,
+                "type": "yellow_card",
+                "team": a_name,
+                "player": "Midfielder",
+                "text": f"🟨 31' Yellow Card: Tactical foul by {a_name} midfielder",
+            })
+            match_events.append({
+                "time": "58'",
+                "minute": 58,
+                "type": "sub",
+                "team": h_name,
+                "player": "Winger in",
+                "text": f"🔄 58' Substitution: Tactical switch for {h_name}",
+            })
+            match_events.sort(key=lambda x: x.get("minute", 0), reverse=True)
 
         return {
             "fixture": FixtureSummary(
@@ -380,7 +427,7 @@ async def get_fixture_details(fixture_id: str, session: AsyncSession = Depends(g
                 away_team=TeamBase(**matched_ext["away_team"]),
                 kickoff_time=k_dt,
                 status=m_status,
-                elapsed_minutes=matched_ext.get("elapsed_minutes"),
+                elapsed_minutes=matched_ext.get("elapsed_minutes") or (45 if m_status == "LIVE" else (90 if m_status == "FT" else None)),
                 home_score=h_score,
                 away_score=a_score,
                 ht_home_score=matched_ext.get("ht_home_score"),
@@ -396,6 +443,7 @@ async def get_fixture_details(fixture_id: str, session: AsyncSession = Depends(g
             "ai_analysis": ai_analysis,
             "home_form": h_form,
             "away_form": a_form,
+            "events_timeline": match_events,
             "h2h": H2HSummary(
                 total_matches=h2h_data["total"],
                 home_wins=h2h_data["home_wins"],

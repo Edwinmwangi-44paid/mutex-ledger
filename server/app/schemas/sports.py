@@ -39,6 +39,8 @@ class MatchStatisticSchema(BaseModel):
     away_shots_total: int = 0
     home_shots_on_target: int = 0
     away_shots_on_target: int = 0
+    home_shots_off_target: int = 0
+    away_shots_off_target: int = 0
     home_xg: float = 0.0
     away_xg: float = 0.0
     home_corners: int = 0
@@ -49,6 +51,12 @@ class MatchStatisticSchema(BaseModel):
     away_yellow_cards: int = 0
     home_red_cards: int = 0
     away_red_cards: int = 0
+    home_attacks: int = 0
+    away_attacks: int = 0
+    home_dangerous_attacks: int = 0
+    away_dangerous_attacks: int = 0
+    home_offsides: int = 0
+    away_offsides: int = 0
 
     class Config:
         from_attributes = True
