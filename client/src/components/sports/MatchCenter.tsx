@@ -7,7 +7,9 @@ import {
   ChevronRight,
   RefreshCw,
   Radio,
-  Flame,
+  Search,
+  X,
+  History,
 } from 'lucide-react';
 
 interface Fixture {
@@ -44,17 +46,6 @@ interface Fixture {
   ai_top_probability?: number;
 }
 
-interface LiveTickerItem {
-  id: string;
-  fixture_id: string;
-  minute: number;
-  event_type: string;
-  team_name: string;
-  player: string;
-  score: string;
-  headline: string;
-}
-
 interface MatchCenterProps {
   apiBase: string;
 }
@@ -78,33 +69,40 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLeague, setSelectedLeague] = useState<string>('all');
-  const [tickerEvents, setTickerEvents] = useState<LiveTickerItem[]>([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
-  const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get('search') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const [searchInput, setSearchInput] = useState<string>(urlSearch);
+  const [activeSearch, setActiveSearch] = useState<string>(urlSearch);
   const navigate = useNavigate();
   const pollingRef = useRef<any>(null);
+
+  // Sync state if URL search param changes
+  useEffect(() => {
+    if (urlSearch !== activeSearch) {
+      setSearchInput(urlSearch);
+      setActiveSearch(urlSearch);
+    }
+  }, [urlSearch]);
 
   // Initial load and filter change
   useEffect(() => {
     fetchCategories();
     fetchLeagues();
     fetchFixtures();
-    fetchTicker();
-  }, [statusFilter, selectedSport, selectedLeague, searchQuery]);
+  }, [statusFilter, selectedSport, selectedLeague, activeSearch]);
 
   // Live auto-polling: 15s for live tab, 30s for general fixtures
   useEffect(() => {
     const pollInterval = statusFilter === 'live' ? 15000 : 30000;
     pollingRef.current = setInterval(() => {
       fetchFixtures(true);
-      fetchTicker();
     }, pollInterval);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [statusFilter, selectedSport, selectedLeague, searchQuery]);
+  }, [statusFilter, selectedSport, selectedLeague, activeSearch]);
 
   const fetchCategories = async () => {
     try {
@@ -133,20 +131,6 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
     }
   };
 
-  const fetchTicker = async () => {
-    try {
-      const res = await fetch(`${apiBase}/sports/live-ticker`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ticker_events) {
-          setTickerEvents(data.ticker_events);
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-
   const fetchFixtures = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     else setIsRefreshing(true);
@@ -156,7 +140,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
       if (statusFilter !== 'all') url += `status_filter=${statusFilter}&`;
       if (selectedSport !== 'all') url += `sport=${selectedSport}&`;
       if (selectedLeague !== 'all') url += `league_id=${selectedLeague}&`;
-      if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+      if (activeSearch) url += `search=${encodeURIComponent(activeSearch)}&`;
 
       const res = await fetch(url);
       if (res.ok) {
@@ -174,7 +158,6 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
 
   const handleManualRefresh = () => {
     fetchFixtures(true);
-    fetchTicker();
   };
 
   const formatKickoff = (isoString: string) => {
@@ -205,26 +188,88 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
         </div>
       </div>
 
-      {/* Live Breaking Ticker Bar */}
-      {tickerEvents.length > 0 && (
-        <div className="flex items-center gap-3 bg-white/70 dark:bg-[#0A0D14]/70 border border-rose-500/25 dark:border-rose-500/20 rounded-2xl px-4 py-2.5 overflow-hidden shadow-sm dark:shadow-inner backdrop-blur-md">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider whitespace-nowrap bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-lg">
-            <Flame className="w-3.5 h-3.5 text-rose-500 animate-bounce" />
-            <span>Live Alerts</span>
+      {/* Interactive Match Search & Quick Filter Bar (replaces static live alerts) */}
+      <div className="rounded-2xl micro-card p-3 sm:p-4 border border-black/[0.08] dark:border-white/[0.08] shadow-sm backdrop-blur-md">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Search Input Box */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchInput(val);
+                setActiveSearch(val);
+                setSearchParams((prev) => {
+                  if (val.trim()) {
+                    prev.set('search', val.trim());
+                  } else {
+                    prev.delete('search');
+                  }
+                  return prev;
+                }, { replace: true });
+              }}
+              placeholder="Search by team (e.g. Arsenal, Real Madrid), league, or past match..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-[#3E4FFF] focus:ring-1 focus:ring-[#3E4FFF] transition-all"
+            />
+            {searchInput && (
+              <button
+                onClick={() => {
+                  setSearchInput('');
+                  setActiveSearch('');
+                  setSearchParams((prev) => {
+                    prev.delete('search');
+                    return prev;
+                  }, { replace: true });
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-6 text-xs text-gray-700 dark:text-[#CBD5E1]">
-            {tickerEvents.map((t) => (
-              <div key={t.id} className="inline-flex items-center gap-2 shrink-0">
-                <span className="font-bold text-gray-900 dark:text-white px-1.5 py-0.5 rounded-md bg-black/[0.05] dark:bg-white/[0.08] border border-black/10 dark:border-white/10 font-mono text-[11px]">
-                  {t.minute}'
-                </span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{t.score}</span>
-                <span className="text-gray-600 dark:text-gray-300">{t.headline}</span>
-              </div>
+
+          {/* Quick-Filter Shortcuts */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
+            <button
+              onClick={() => {
+                setStatusFilter('completed');
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'completed'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-black/[0.03] dark:bg-white/[0.04] text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white border border-black/[0.06] dark:border-white/[0.06]'
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-purple-400" />
+              <span>Past Matches</span>
+            </button>
+
+            {['Arsenal', 'Real Madrid', 'Man City', 'Bayern'].map((team) => (
+              <button
+                key={team}
+                onClick={() => {
+                  setSearchInput(team);
+                  setActiveSearch(team);
+                  setSearchParams((prev) => {
+                    prev.set('search', team);
+                    return prev;
+                  }, { replace: true });
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap border ${
+                  activeSearch.toLowerCase() === team.toLowerCase()
+                    ? 'bg-[#3E4FFF]/15 text-[#3E4FFF] border-[#3E4FFF]/40 dark:text-[#8D9BFF]'
+                    : 'bg-black/[0.02] dark:bg-white/[0.02] text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border-black/[0.05] dark:border-white/[0.05]'
+                }`}
+              >
+                {team}
+              </button>
             ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Main Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
