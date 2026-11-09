@@ -51,25 +51,25 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
         ? 'bg-[#050608]/85 border-white/[0.07]'
         : 'bg-[#FAFAFB]/90 border-black/[0.07] shadow-sm'
     }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
           {/* Brand Logo - Micro1 Style */}
-          <div className="flex items-center space-x-8">
-            <NavLink to="/" className="flex items-center space-x-3 group">
+          <div className="flex items-center space-x-4 sm:space-x-8 shrink-0">
+            <NavLink to="/" className="flex items-center space-x-2 sm:space-x-3 group">
               <div className="relative">
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#3E4FFF] to-[#00D2FF] opacity-35 blur-md group-hover:opacity-75 transition duration-300" />
-                <div className={`relative w-9 h-9 rounded-xl border flex items-center justify-center font-black text-base shadow-inner ${
+                <div className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border flex items-center justify-center font-black text-sm sm:text-base shadow-inner ${
                   isDark ? 'bg-[#090B10] border-white/15 text-white' : 'bg-white border-black/10 text-black'
                 }`}>
                   <span className="bg-gradient-to-br from-[#3E4FFF] to-[#00D2FF] bg-clip-text text-transparent font-bold">P</span>
                 </div>
               </div>
               <div className="flex flex-col">
-                <span className={`font-extrabold text-sm tracking-tight flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <span className={`font-extrabold text-xs sm:text-sm tracking-tight flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   Pesa<span className="text-[#3E4FFF]">Flip</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold tracking-wider uppercase bg-[#3E4FFF]/15 text-[#3E4FFF] border border-[#3E4FFF]/30">AI</span>
+                  <span className="px-1 py-0.2 rounded text-[8px] sm:text-[9px] font-mono font-semibold tracking-wider uppercase bg-[#3E4FFF]/15 text-[#3E4FFF] border border-[#3E4FFF]/30">AI</span>
                 </span>
-                <span className={`text-[10px] font-medium tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                <span className={`hidden xs:inline text-[9px] sm:text-[10px] font-medium tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                   Intelligence Engine
                 </span>
               </div>
@@ -112,15 +112,16 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Right Controls: Search, Theme Switcher, Profile, Mobile Menu */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
             {/* Global Quick Search Button */}
             <button
               onClick={onOpenSearch}
-              className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
+              className={`flex items-center space-x-1.5 sm:space-x-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
                 isDark
                   ? 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08] hover:border-white/20 text-gray-400 hover:text-gray-200'
                   : 'bg-black/[0.03] hover:bg-black/[0.06] border-black/[0.08] hover:border-black/20 text-gray-600 hover:text-gray-900'
               }`}
+              title="Search intelligence (⌘K)"
             >
               <Search className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <span className="hidden sm:inline font-medium">Search intelligence...</span>
@@ -136,16 +137,16 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onToggleTheme}
                 title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                className={`p-2 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition-all active:scale-95 cursor-pointer ${
                   isDark
                     ? 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.08] text-amber-300 hover:text-amber-200'
                     : 'bg-black/[0.03] hover:bg-black/[0.08] border-black/[0.08] text-[#3E4FFF] hover:text-[#3140E8]'
                 }`}
               >
                 {isDark ? (
-                  <Sun className="w-4 h-4 transition-transform hover:rotate-45" />
+                  <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform hover:rotate-45" />
                 ) : (
-                  <Moon className="w-4 h-4 transition-transform hover:-rotate-12" />
+                  <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform hover:-rotate-12" />
                 )}
               </button>
             )}
@@ -199,7 +200,7 @@ export const UnifiedNavbar: React.FC<NavbarProps> = ({
             {/* Mobile Hamburger toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`md:hidden p-2 rounded-xl transition-colors ${
+              className={`md:hidden p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors ${
                 isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-600 hover:text-black hover:bg-black/[0.04]'
               }`}
             >

@@ -51,54 +51,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({ isDark = true, onToggl
     <div className="min-h-screen bg-[#FAFAFB] dark:bg-[#050608] text-gray-900 dark:text-gray-200 flex flex-col font-sans selection:bg-[#3E4FFF] selection:text-white transition-colors duration-200">
       {/* ─── Top Global Navigation Bar ─── */}
       <header className="sticky top-0 z-50 bg-white/85 dark:bg-[#050608]/85 backdrop-blur-md border-b border-black/[0.06] dark:border-white/[0.08] transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-8 h-8 rounded-xl bg-[#3E4FFF] flex items-center justify-center font-black text-white text-sm shadow-md shadow-[#3E4FFF]/25">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+          {/* Brand Logo */}
+          <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0" onClick={() => navigate('/')}>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#3E4FFF] flex items-center justify-center font-black text-white text-xs sm:text-sm shadow-md shadow-[#3E4FFF]/25">
               P
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight text-gray-950 dark:text-white leading-none">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-gray-950 dark:text-white leading-none">
                 Pesa<span className="text-[#3E4FFF] dark:text-[#8D9BFF]">Flip</span>
               </span>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium tracking-wide">
+              <span className="hidden xs:inline text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400 font-medium tracking-wide">
                 Intelligence Platform
               </span>
             </div>
           </div>
 
+          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold text-gray-600 dark:text-gray-400">
             <a href="#sports" className="hover:text-[#3E4FFF] dark:hover:text-[#8D9BFF] transition-colors">Sports Engine</a>
-            <a href="#crypto" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Crypto Analytics</a>
+            <a href="#tradingview" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">TradingView</a>
             <a href="#entertainment" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Entertainment</a>
             <a href="#architecture" className="hover:text-gray-900 dark:hover:text-white transition-colors">Architecture</a>
             <a href="#faq" className="hover:text-gray-900 dark:hover:text-white transition-colors">FAQ</a>
           </nav>
 
-          <div className="flex items-center space-x-3">
+          {/* Right Action Controls - Compact on mobile */}
+          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
             {onToggleTheme && (
               <button
                 type="button"
                 onClick={onToggleTheme}
                 aria-label="Toggle light or dark theme"
-                className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] transition-colors cursor-pointer"
                 title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
               >
-                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#3E4FFF]" />}
+                {isDark ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#3E4FFF]" />}
               </button>
             )}
 
             <button
               onClick={() => navigate('/auth')}
-              className="text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white px-3 py-1.5 transition-colors cursor-pointer"
+              className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white px-2 sm:px-3 py-1 sm:py-1.5 transition-colors cursor-pointer"
             >
               Sign In
             </button>
             <button
               onClick={() => navigate('/auth')}
-              className="px-4 py-2 rounded-xl bg-[#3E4FFF] hover:bg-[#3140E8] text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-[#3E4FFF]/25 active:scale-95 cursor-pointer"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#3E4FFF] hover:bg-[#3140E8] text-white font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 transition-all shadow-md shadow-[#3E4FFF]/25 active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <span>Get Started</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
         </div>
@@ -526,22 +529,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ isDark = true, onToggl
       </section>
 
       {/* ─── Modern Platform Footer ─── */}
-      <footer className="mt-auto border-t border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#050608] px-6 py-8 text-xs text-gray-500 dark:text-gray-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
+      <footer className="mt-auto border-t border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#050608] px-4 sm:px-6 py-6 sm:py-8 text-xs text-gray-500 dark:text-gray-400">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2 gap-y-1 text-[11px] sm:text-xs">
             <span className="font-bold text-gray-900 dark:text-gray-300">PesaFlip Intelligence</span>
-            <span>•</span>
+            <span className="text-gray-400 dark:text-gray-600">•</span>
             <span>Sports Match Centre</span>
-            <span>•</span>
-            <span>Crypto Markets</span>
-            <span>•</span>
+            <span className="text-gray-400 dark:text-gray-600">•</span>
+            <span>TradingView Markets</span>
+            <span className="text-gray-400 dark:text-gray-600">•</span>
             <span>Media Discovery</span>
           </div>
 
-          <div className="flex items-center space-x-5">
-            <a href="#sports" className="hover:text-black dark:hover:text-gray-200">Sports</a>
-            <a href="#crypto" className="hover:text-black dark:hover:text-gray-200">Crypto</a>
-            <a href="#entertainment" className="hover:text-black dark:hover:text-gray-200">Entertainment</a>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] sm:text-xs">
+            <a href="#sports" className="hover:text-black dark:hover:text-gray-200 transition-colors">Sports</a>
+            <a href="#tradingview" className="hover:text-black dark:hover:text-gray-200 transition-colors">TradingView</a>
+            <a href="#entertainment" className="hover:text-black dark:hover:text-gray-200 transition-colors">Entertainment</a>
             <span
               className="cursor-pointer text-[#3E4FFF] dark:text-[#8D9BFF] font-semibold hover:underline"
               onClick={() => navigate('/auth')}
