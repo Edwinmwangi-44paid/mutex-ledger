@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  LineChart as ChartIcon,
   TrendingUp,
   Search,
   Star,
   ArrowUpRight,
   ArrowDownRight,
-  Radio,
+  BarChart2,
+  LineChart as LineIcon,
+  Activity,
+  Layers,
 } from 'lucide-react';
 import { FinnhubClient, FinnhubTrade } from '../../services/finnhubClient';
 
@@ -20,15 +22,18 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const [selectedCoin, setSelectedCoin] = useState<any>(null);
   const [chartData, setChartData] = useState<any>(null);
   const [timeframe, setTimeframe] = useState<string>('7d');
+  const [activeTab, setActiveTab] = useState<'all' | 'crypto' | 'forex'>('all');
+  const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
+  const [showIndicators, setShowIndicators] = useState<boolean>(true);
+  const [hoveredCandle, setHoveredCandle] = useState<any>(null);
   const [search, setSearch] = useState<string>('');
   const [, setLoading] = useState<boolean>(true);
   const [loadingChart, setLoadingChart] = useState<boolean>(false);
-  const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('pesaflip_crypto_watchlist') || '["bitcoin", "ethereum", "solana"]');
+      return JSON.parse(localStorage.getItem('pesaflip_crypto_watchlist') || '["bitcoin", "ethereum", "eur-usd"]');
     } catch {
-      return ['bitcoin', 'ethereum', 'solana'];
+      return ['bitcoin', 'ethereum', 'eur-usd'];
     }
   });
 
@@ -37,7 +42,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   useEffect(() => {
     fetchInitialData();
 
-    // Initialize permanent live WebSocket streaming via Finnhub client
+    // Permanent WebSocket streaming for crypto trades
     const client = new FinnhubClient({
       apiKey: 'dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0',
       autoSubscribeTickers: [
@@ -45,12 +50,13 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
         'BINANCE:ETHUSDT',
         'BINANCE:SOLUSDT',
         'BINANCE:XRPUSDT',
+        'BINANCE:BNBUSDT',
+        'BINANCE:DOGEUSDT',
         'BINANCE:ADAUSDT',
         'BINANCE:AVAXUSDT',
+        'BINANCE:LINKUSDT',
+        'BINANCE:SUIUSDT',
       ],
-      onStatusChange: (status) => {
-        setWsConnected(status === 'CONNECTED');
-      },
       onTrade: (trade: FinnhubTrade) => {
         handleIncomingTrade(trade);
       },
@@ -69,31 +75,24 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
       'BINANCE:ETHUSDT': 'ethereum',
       'BINANCE:SOLUSDT': 'solana',
       'BINANCE:XRPUSDT': 'ripple',
+      'BINANCE:BNBUSDT': 'binancecoin',
+      'BINANCE:DOGEUSDT': 'dogecoin',
       'BINANCE:ADAUSDT': 'cardano',
       'BINANCE:AVAXUSDT': 'avalanche-2',
+      'BINANCE:LINKUSDT': 'chainlink',
+      'BINANCE:SUIUSDT': 'sui',
     };
 
     const coinId = symbolMap[trade.s];
     if (!coinId) return;
 
     setCoins((prevCoins) =>
-      prevCoins.map((c) => {
-        if (c.id === coinId) {
-          return {
-            ...c,
-            price: trade.p,
-          };
-        }
-        return c;
-      })
+      prevCoins.map((c) => (c.id === coinId ? { ...c, price: trade.p } : c))
     );
 
     setSelectedCoin((prev: any) => {
       if (prev && prev.id === coinId) {
-        return {
-          ...prev,
-          price: trade.p,
-        };
+        return { ...prev, price: trade.p };
       }
       return prev;
     });
@@ -146,48 +145,25 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const toggleWatchlist = (coinId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setWatchlist((prev) => {
-      const next = prev.includes(coinId)
-        ? prev.filter((id) => id !== coinId)
-        : [...prev, coinId];
+      const next = prev.includes(coinId) ? prev.filter((id) => id !== coinId) : [...prev, coinId];
       localStorage.setItem('pesaflip_crypto_watchlist', JSON.stringify(next));
       return next;
     });
   };
 
-  const filteredCoins = coins.filter(
-    (c) =>
+  const filteredCoins = coins.filter((c) => {
+    const matchesCategory =
+      activeTab === 'all' ||
+      (activeTab === 'crypto' && c.category === 'crypto') ||
+      (activeTab === 'forex' && c.category === 'forex');
+    const matchesSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.symbol.toLowerCase().includes(search.toLowerCase())
-  );
+      c.symbol.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="space-y-6">
-      {/* Editorial Header - Micro-1 Polished */}
-      <div className="relative rounded-3xl overflow-hidden micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 md:p-8 micro-glow-cyan shadow-xl">
-        <div className="max-w-2xl space-y-3 relative z-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 text-xs font-semibold shadow-inner">
-              <ChartIcon className="w-3.5 h-3.5" />
-              <span>Pure Market Intelligence • Finnhub Feed</span>
-            </div>
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
-              wsConnected
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-            }`}>
-              <Radio className={`w-3 h-3 ${wsConnected ? 'animate-pulse' : ''}`} />
-              <span>{wsConnected ? 'WebSocket Live Stream Active' : 'Connecting Stream...'}</span>
-            </div>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-950 dark:text-white tracking-tight">
-            TradingView Market Intelligence
-          </h1>
-          <p className="text-sm md:text-base text-gray-600 dark:text-[#94A3B8] leading-relaxed">
-            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and streaming Finnhub WebSocket trades.
-          </p>
-        </div>
-      </div>
-
       {/* Overview Metric Cards */}
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -247,6 +223,9 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                     <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.06] px-2 py-0.5 rounded-md">
                       {selectedCoin.symbol}
                     </span>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/20">
+                      {selectedCoin.category === 'forex' ? 'Forex Pair' : 'Crypto'}
+                    </span>
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Market Rank #{selectedCoin.rank}</div>
                 </div>
@@ -255,79 +234,234 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               {/* Price & Change */}
               <div className="text-right">
                 <div className="text-2xl font-black text-gray-950 dark:text-white font-mono">
-                  ${selectedCoin.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ${selectedCoin.price.toLocaleString(undefined, {
+                    minimumFractionDigits: selectedCoin.price < 2 ? 4 : 2,
+                    maximumFractionDigits: selectedCoin.price < 2 ? 4 : 2,
+                  })}
                 </div>
                 <div
                   className={`text-xs font-bold flex items-center justify-end gap-1 font-mono ${
                     selectedCoin.change_24h >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  {selectedCoin.change_24h >= 0 ? (
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  ) : (
-                    <ArrowDownRight className="w-3.5 h-3.5" />
-                  )}
+                  {selectedCoin.change_24h >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                   <span>{selectedCoin.change_24h}% (24h)</span>
                 </div>
               </div>
             </div>
 
-            {/* Timeframe Controls */}
-            <div className="flex items-center gap-1.5 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.06] rounded-2xl w-fit backdrop-blur-md">
-              {['1h', '24h', '7d', '30d', '90d', '1y', 'all'].map((tf) => (
+            {/* Interactive Analysis Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-b border-black/[0.06] dark:border-white/[0.06] py-3">
+              {/* Chart Mode Toggle */}
+              <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.06] rounded-xl">
                 <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-xl text-xs font-mono font-bold uppercase transition-all active:scale-95 cursor-pointer ${
-                    timeframe === tf
-                      ? 'bg-[#3E4FFF] text-white shadow-md shadow-[#3E4FFF]/30 font-bold'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
+                  onClick={() => setChartType('candlestick')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    chartType === 'candlestick'
+                      ? 'bg-[#3E4FFF] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
                   }`}
                 >
-                  {tf}
+                  <BarChart2 className="w-3.5 h-3.5" />
+                  <span>Candlesticks</span>
                 </button>
-              ))}
+                <button
+                  onClick={() => setChartType('line')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    chartType === 'line'
+                      ? 'bg-[#3E4FFF] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+                  }`}
+                >
+                  <LineIcon className="w-3.5 h-3.5" />
+                  <span>Line</span>
+                </button>
+              </div>
+
+              {/* Indicator Controls */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowIndicators((prev) => !prev)}
+                  className={`px-3 py-1 rounded-xl text-xs font-mono font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    showIndicators
+                      ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'
+                      : 'bg-black/[0.02] dark:bg-white/[0.02] text-gray-500 border-black/10 dark:border-white/10'
+                  }`}
+                >
+                  <Layers className="w-3 h-3" />
+                  <span>SMA (7)</span>
+                </button>
+              </div>
+
+              {/* Timeframe Controls */}
+              <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.06] rounded-xl backdrop-blur-md">
+                {['1h', '24h', '7d', '30d', '90d', '1y', 'all'].map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                      timeframe === tf
+                        ? 'bg-[#3E4FFF] text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Interactive SVG Chart Canvas */}
-            <div className="h-64 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/40 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-3 shadow-inner">
+            {/* Live Inspection Bar (Hover / Active Candle) */}
+            <div className="flex items-center justify-between text-[11px] font-mono px-1 py-1 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05] text-gray-600 dark:text-gray-400">
+              {hoveredCandle ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-gray-900 dark:text-white font-bold">{new Date(hoveredCandle.timestamp).toLocaleString()}</span>
+                  <span>O: <strong className="text-gray-900 dark:text-white">${hoveredCandle.open}</strong></span>
+                  <span>H: <strong className="text-emerald-500">${hoveredCandle.high}</strong></span>
+                  <span>L: <strong className="text-rose-500">${hoveredCandle.low}</strong></span>
+                  <span>C: <strong className="text-gray-900 dark:text-white">${hoveredCandle.close}</strong></span>
+                  {hoveredCandle.sma7 && <span className="text-indigo-400 font-bold">SMA: ${hoveredCandle.sma7}</span>}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Activity className="w-3 h-3 text-[#3E4FFF]" />
+                  <span>Hover across bars to inspect candle OHLC and technical metrics in real time</span>
+                </div>
+              )}
+            </div>
+
+            {/* Interactive SVG Chart Canvas (Candlestick + Line Modes) */}
+            <div className="h-72 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/50 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-4 shadow-inner">
               {loadingChart ? (
-                <div className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Generating price curve...</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Loading live market candles...</div>
               ) : chartData && chartData.points?.length > 1 ? (
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 600 240">
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.35" />
+                      <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.30" />
                       <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
 
-                  {/* SVG Points Calculation */}
                   {(() => {
-                    const pts = chartData.points;
-                    const min = Math.min(...pts.map((p: any) => p.price));
-                    const max = Math.max(...pts.map((p: any) => p.price));
+                    const candles = chartData.points;
+                    const min = Math.min(...candles.map((p: any) => p.low ?? p.price));
+                    const max = Math.max(...candles.map((p: any) => p.high ?? p.price));
                     const range = max - min || 1;
+                    const svgW = 600;
+                    const svgH = 240;
+                    const topPadding = 20;
+                    const bottomPadding = 20;
+                    const chartH = svgH - topPadding - bottomPadding;
 
-                    const coords = pts.map((p: any, idx: number) => {
-                      const x = (idx / (pts.length - 1)) * 500;
-                      const y = 200 - ((p.price - min) / range) * 170 - 15;
-                      return `${x},${y}`;
-                    });
+                    const getY = (price: number) => svgH - bottomPadding - ((price - min) / range) * chartH;
 
-                    const pathLine = `M ${coords.join(' L ')}`;
-                    const pathArea = `${pathLine} L 500,200 L 0,200 Z`;
+                    const barW = Math.max(3, (svgW / candles.length) * 0.7);
 
                     return (
                       <>
-                        <path d={pathArea} fill="url(#chartGradient)" />
-                        <path
-                          d={pathLine}
-                          fill="none"
-                          stroke="#06B6D4"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
+                        {/* Grid lines */}
+                        {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                          const y = topPadding + chartH * pct;
+                          const pVal = max - range * pct;
+                          return (
+                            <g key={idx}>
+                              <line x1="0" y1={y} x2={svgW} y2={y} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                              <text x={svgW - 5} y={y - 3} fill="gray" fontSize="9" textAnchor="end" fontFamily="monospace">
+                                ${pVal.toFixed(pVal < 2 ? 4 : 2)}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* CANDLESTICK MODE */}
+                        {chartType === 'candlestick' &&
+                          candles.map((c: any, idx: number) => {
+                            const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                            const isGreen = c.close >= c.open;
+                            const yOpen = getY(c.open);
+                            const yClose = getY(c.close);
+                            const yHigh = getY(c.high);
+                            const yLow = getY(c.low);
+                            const rectY = Math.min(yOpen, yClose);
+                            const rectH = Math.max(2, Math.abs(yClose - yOpen));
+                            const color = isGreen ? '#10B981' : '#F43F5E';
+
+                            return (
+                              <g
+                                key={idx}
+                                onMouseEnter={() => setHoveredCandle(c)}
+                                onMouseLeave={() => setHoveredCandle(null)}
+                                className="cursor-crosshair transition-opacity hover:opacity-80"
+                              >
+                                {/* Wick */}
+                                <line x1={x} y1={yHigh} x2={x} y2={yLow} stroke={color} strokeWidth="1.2" />
+                                {/* Body */}
+                                <rect
+                                  x={x - barW / 2}
+                                  y={rectY}
+                                  width={barW}
+                                  height={rectH}
+                                  fill={color}
+                                  rx="1"
+                                />
+                              </g>
+                            );
+                          })}
+
+                        {/* LINE MODE */}
+                        {chartType === 'line' &&
+                          (() => {
+                            const coords = candles.map((p: any, idx: number) => {
+                              const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                              const y = getY(p.close || p.price);
+                              return `${x},${y}`;
+                            });
+                            const pathLine = `M ${coords.join(' L ')}`;
+                            const pathArea = `${pathLine} L ${svgW - 20},${svgH} L 20,${svgH} Z`;
+
+                            return (
+                              <>
+                                <path d={pathArea} fill="url(#chartGradient)" />
+                                <path d={pathLine} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" />
+                                {candles.map((c: any, idx: number) => {
+                                  const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                                  const y = getY(c.close || c.price);
+                                  return (
+                                    <circle
+                                      key={idx}
+                                      cx={x}
+                                      cy={y}
+                                      r="4"
+                                      fill="transparent"
+                                      className="cursor-crosshair"
+                                      onMouseEnter={() => setHoveredCandle(c)}
+                                      onMouseLeave={() => setHoveredCandle(null)}
+                                    />
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+
+                        {/* OVERLAY INDICATOR: SMA(7) */}
+                        {showIndicators &&
+                          (() => {
+                            const smaCoords = candles.map((p: any, idx: number) => {
+                              const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                              const y = getY(p.sma7 || p.close);
+                              return `${x},${y}`;
+                            });
+                            return (
+                              <path
+                                d={`M ${smaCoords.join(' L ')}`}
+                                fill="none"
+                                stroke="#818CF8"
+                                strokeWidth="1.8"
+                                strokeDasharray="4 3"
+                              />
+                            );
+                          })()}
                       </>
                     );
                   })()}
@@ -342,19 +476,21 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-[#0F121A] border border-black/[0.06] dark:border-[#1B212D]">
                 <div className="text-[11px] text-gray-500 font-medium">Market Capitalization</div>
                 <div className="text-sm font-bold text-gray-950 dark:text-white mt-1 font-mono">
-                  ${(selectedCoin.market_cap / 1e9).toFixed(2)}B
+                  {selectedCoin.market_cap > 0 ? `$${(selectedCoin.market_cap / 1e9).toFixed(2)}B` : 'Global Forex'}
                 </div>
               </div>
               <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-[#0F121A] border border-black/[0.06] dark:border-[#1B212D]">
                 <div className="text-[11px] text-gray-500 font-medium">Circulating Supply</div>
                 <div className="text-sm font-bold text-gray-950 dark:text-white mt-1 font-mono">
-                  {selectedCoin.circulating_supply.toLocaleString()} {selectedCoin.symbol}
+                  {selectedCoin.circulating_supply > 0
+                    ? `${selectedCoin.circulating_supply.toLocaleString()} ${selectedCoin.symbol}`
+                    : 'Fiat Benchmark'}
                 </div>
               </div>
               <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-[#0F121A] border border-black/[0.06] dark:border-[#1B212D]">
                 <div className="text-[11px] text-gray-500 font-medium">All Time High (ATH)</div>
                 <div className="text-sm font-bold text-gray-950 dark:text-white mt-1 font-mono">
-                  ${selectedCoin.all_time_high.toLocaleString()}
+                  ${selectedCoin.all_time_high?.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -369,6 +505,40 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
 
         {/* Right Column: Tracked Assets Table (5 cols) */}
         <div className="lg:col-span-5 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-4 flex flex-col space-y-3 shadow-sm">
+          {/* Category Tabs: All / Crypto / Forex */}
+          <div className="flex items-center gap-1.5 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-xl">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'all'
+                  ? 'bg-[#3E4FFF] text-white shadow-sm font-bold'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              All Assets ({coins.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('crypto')}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'crypto'
+                  ? 'bg-[#3E4FFF] text-white shadow-sm font-bold'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              Crypto
+            </button>
+            <button
+              onClick={() => setActiveTab('forex')}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'forex'
+                  ? 'bg-[#3E4FFF] text-white shadow-sm font-bold'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              Forex & Fiat
+            </button>
+          </div>
+
           {/* Search Bar */}
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
@@ -376,13 +546,13 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search coin name or symbol..."
+              placeholder="Search coin, token, currency pair..."
               className="w-full pl-9 pr-3 py-2 bg-black/[0.03] dark:bg-[#0F121A] border border-black/[0.08] dark:border-[#1F2535] rounded-xl text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-[#3E4FFF]"
             />
           </div>
 
-          {/* Coins List */}
-          <div className="flex-1 overflow-y-auto space-y-1.5 max-h-[620px]">
+          {/* Coins & Currencies List */}
+          <div className="flex-1 overflow-y-auto space-y-1.5 max-h-[640px]">
             {filteredCoins.map((coin) => {
               const isSelected = selectedCoin?.id === coin.id;
               const isWatched = watchlist.includes(coin.id);
@@ -408,16 +578,31 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                         }`}
                       />
                     </button>
-                    <img src={coin.logo} alt={coin.name} className="w-7 h-7 rounded-full p-0.5 bg-black/[0.03] dark:bg-white/[0.05]" />
+                    <img
+                      src={coin.logo}
+                      alt={coin.name}
+                      className="w-7 h-7 rounded-full p-0.5 object-cover bg-black/[0.03] dark:bg-white/[0.05]"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(coin.symbol)}&background=3E4FFF&color=fff&size=64`;
+                      }}
+                    />
                     <div>
                       <div className="text-xs font-bold text-gray-950 dark:text-white">{coin.name}</div>
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">{coin.symbol}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                        <span>{coin.symbol}</span>
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-black/[0.04] dark:bg-white/[0.04]">
+                          {coin.category}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="text-xs font-bold text-gray-950 dark:text-white font-mono">
-                      ${coin.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ${coin.price.toLocaleString(undefined, {
+                        minimumFractionDigits: coin.price < 2 ? 4 : 2,
+                        maximumFractionDigits: coin.price < 2 ? 4 : 2,
+                      })}
                     </div>
                     <div
                       className={`text-[10px] font-semibold font-mono ${
