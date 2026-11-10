@@ -19,11 +19,13 @@ async def get_crypto_overview():
 
 @router.get("/crypto/coins")
 async def get_crypto_coins(
-    category: Optional[str] = Query(None, description="crypto, forex, or all"),
+    category: Optional[str] = Query(None, description="crypto, stocks, forex, or all"),
     search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
 ):
-    """Returns list of tracked cryptocurrencies and forex currencies with real-time stats."""
-    return await CryptoIntelligenceService.get_coins(category=category, search=search)
+    """Returns paginated list of tracked cryptos, equities, and forex currencies with on-demand quote refresh."""
+    return await CryptoIntelligenceService.get_coins(category=category, search=search, page=page, limit=limit)
 
 
 @router.get("/crypto/coins/{coin_id}")
