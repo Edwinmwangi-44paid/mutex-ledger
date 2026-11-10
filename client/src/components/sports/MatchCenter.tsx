@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Trophy,
   Clock,
   Sparkles,
   ChevronRight,
@@ -367,11 +366,25 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
         </div>
       ) : fixtures.length === 0 ? (
         <div className="text-center py-16 rounded-3xl micro-card space-y-3">
-          <Trophy className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto" />
-          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-300">No matches found</h3>
+          <Radio className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto" />
+          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-300">
+            {statusFilter === 'live' ? 'No Live Matches In-Play Right Now' : 'No matches found'}
+          </h3>
           <p className="text-xs text-gray-500 max-w-sm mx-auto">
-            Try adjusting your search criteria or switching to a different competition filter.
+            {statusFilter === 'live'
+              ? 'There are currently no active matches live in the SportAPI telemetry stream. Check Upcoming Fixtures or Past Matches.'
+              : 'Try adjusting your search criteria or switching to a different competition filter.'}
           </p>
+          {statusFilter === 'live' && (
+            <div className="pt-2">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className="px-4 py-2 rounded-xl bg-[#3E4FFF] text-white text-xs font-semibold hover:bg-[#3240e6] transition-all cursor-pointer shadow-md"
+              >
+                View Upcoming Fixtures
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

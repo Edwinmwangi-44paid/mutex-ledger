@@ -179,7 +179,16 @@ async def get_fixtures(
             filtered.sort(key=lambda x: (0 if x.status in ["LIVE", "HT"] else (1 if x.status == "SCHEDULED" else 2), x.kickoff_time))
             return filtered
 
-    # 2. Fallback to Database seeded fixtures if external return is empty for this filter
+        # If filtering specifically for live matches or if search was provided and returned empty,
+        # return empty list rather than falling back to mock database seeds.
+        if status_filter in ["live", "today"] or search:
+            return []
+
+    # 2. Fallback to Database seeded fixtures only if external provider completely unavailable
+    # and NOT for live in-play filter (so we never fabricate fake in-play live scores)
+    if status_filter == "live":
+        return []
+
     try:
         stmt = (
             select(Fixture)
@@ -189,9 +198,7 @@ async def get_fixtures(
                 selectinload(Fixture.away_team),
             )
         )
-        if status_filter == "live":
-            stmt = stmt.where(Fixture.status.in_(["LIVE", "HT"]))
-        elif status_filter == "today":
+        if status_filter == "today":
             stmt = stmt.where(Fixture.kickoff_time >= today_start, Fixture.kickoff_time < today_end)
         elif status_filter == "tomorrow":
             stmt = stmt.where(Fixture.kickoff_time >= tomorrow_start, Fixture.kickoff_time < tomorrow_end)

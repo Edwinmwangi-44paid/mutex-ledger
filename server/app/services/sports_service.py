@@ -157,62 +157,8 @@ class SportsDataService:
 
             await session.flush()
 
-            # 3. Dynamic Real Fixture Schedule spanning Live, Today, Tomorrow, Next 7 Days, and Completed
+            # 3. Dynamic Real Fixture Schedule (Upcoming and Recent Results only - no mock in-play live fixtures)
             fixtures_spec = [
-                # LIVE MATCH 1 (EPL Super Clash)
-                {
-                    "id": "fix_live_mci_ars",
-                    "league_id": "epl",
-                    "home_team_id": "mancity",
-                    "away_team_id": "arsenal",
-                    "kickoff_time": now - timedelta(minutes=68),
-                    "status": "LIVE",
-                    "elapsed_minutes": 68,
-                    "home_score": 2,
-                    "away_score": 1,
-                    "ht_home_score": 1,
-                    "ht_away_score": 1,
-                    "venue": "Etihad Stadium",
-                    "round_name": "Regular Season - 28",
-                    "is_popular": True,
-                    "stats": {
-                        "home_possession": 62, "away_possession": 38,
-                        "home_shots_total": 14, "away_shots_total": 7,
-                        "home_shots_on_target": 6, "away_shots_on_target": 3,
-                        "home_xg": 1.94, "away_xg": 0.88,
-                        "home_corners": 7, "away_corners": 3,
-                        "home_fouls": 9, "away_fouls": 13,
-                        "home_yellow_cards": 1, "away_yellow_cards": 3,
-                        "home_red_cards": 0, "away_red_cards": 0
-                    }
-                },
-                # LIVE MATCH 2 (Kenyan Mashemeji Derby)
-                {
-                    "id": "fix_live_gor_afc",
-                    "league_id": "kpl",
-                    "home_team_id": "gormahia",
-                    "away_team_id": "afcleopards",
-                    "kickoff_time": now - timedelta(minutes=34),
-                    "status": "LIVE",
-                    "elapsed_minutes": 34,
-                    "home_score": 1,
-                    "away_score": 0,
-                    "ht_home_score": 1,
-                    "ht_away_score": 0,
-                    "venue": "Moi International Sports Centre, Kasarani",
-                    "round_name": "FKF Premier League - Round 21",
-                    "is_popular": True,
-                    "stats": {
-                        "home_possession": 56, "away_possession": 44,
-                        "home_shots_total": 8, "away_shots_total": 4,
-                        "home_shots_on_target": 3, "away_shots_on_target": 1,
-                        "home_xg": 0.92, "away_xg": 0.41,
-                        "home_corners": 4, "away_corners": 2,
-                        "home_fouls": 11, "away_fouls": 12,
-                        "home_yellow_cards": 2, "away_yellow_cards": 2,
-                        "home_red_cards": 0, "away_red_cards": 0
-                    }
-                },
                 # TODAY'S UPCOMING MATCHES
                 {
                     "id": "fix_today_rma_bar",
