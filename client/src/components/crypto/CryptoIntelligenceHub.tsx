@@ -10,8 +10,10 @@ import {
   Activity,
   Layers,
   Loader2,
+  Maximize2,
 } from 'lucide-react';
 import { FinnhubClient, FinnhubTrade } from '../../services/finnhubClient';
+import { AdvancedTradingModal } from './AdvancedTradingModal';
 
 interface CryptoIntelligenceHubProps {
   apiBase: string;
@@ -33,6 +35,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isTradingModalOpen, setIsTradingModalOpen] = useState<boolean>(false);
 
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
@@ -445,8 +448,18 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   )}
                 </div>
 
-                {/* Interactive SVG Chart Canvas (Candlestick + Line Modes) */}
-                <div className="h-72 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/50 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-4 shadow-inner">
+                {/* Interactive SVG Chart Canvas (Candlestick + Line Modes) with Pro Fullscreen Click */}
+                <div
+                  onClick={() => setIsTradingModalOpen(true)}
+                  className="group/canvas h-72 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/50 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-4 shadow-inner cursor-pointer transition-all hover:border-[#3E4FFF]/50 hover:shadow-lg hover:shadow-[#3E4FFF]/5 overflow-hidden"
+                  title="Click to launch full GoCharting Live Pro Terminal"
+                >
+                  {/* Subtle hover launch pro banner */}
+                  <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-white text-[10px] font-mono font-bold opacity-0 group-hover/canvas:opacity-100 transition-all pointer-events-none shadow-md">
+                    <Maximize2 className="w-3 h-3 text-[#3E4FFF]" />
+                    <span>LAUNCH PRO TERMINAL</span>
+                  </div>
+
                   {loadingChart ? (
                     <div className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Loading live market candles...</div>
                   ) : chartData && chartData.points?.length > 1 ? (
@@ -730,6 +743,16 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
             </div>
           </div>
         </>
+      )}
+
+      {/* Full Live GoCharting / TradingView Pro Terminal Modal */}
+      {selectedCoin && (
+        <AdvancedTradingModal
+          asset={selectedCoin}
+          isOpen={isTradingModalOpen}
+          onClose={() => setIsTradingModalOpen(false)}
+          apiBase={apiBase}
+        />
       )}
     </div>
   );
