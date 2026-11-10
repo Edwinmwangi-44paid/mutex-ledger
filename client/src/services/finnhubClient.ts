@@ -358,3 +358,4 @@ export const defaultFinnhubClient = new FinnhubClient({
   apiKey: 'dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0',
   autoSubscribeTickers: ['BINANCE:BTCUSDT', 'BINANCE:ETHUSDT'],
 });
+

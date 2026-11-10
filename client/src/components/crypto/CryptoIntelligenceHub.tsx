@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LineChart as ChartIcon,
   TrendingUp,
@@ -6,7 +6,9 @@ import {
   Star,
   ArrowUpRight,
   ArrowDownRight,
+  Radio,
 } from 'lucide-react';
+import { FinnhubClient, FinnhubTrade } from '../../services/finnhubClient';
 
 interface CryptoIntelligenceHubProps {
   apiBase: string;
@@ -20,7 +22,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const [timeframe, setTimeframe] = useState<string>('7d');
   const [search, setSearch] = useState<string>('');
   const [, setLoading] = useState<boolean>(true);
-const [loadingChart, setLoadingChart] = useState<boolean>(false);
+  const [loadingChart, setLoadingChart] = useState<boolean>(false);
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('pesaflip_crypto_watchlist') || '["bitcoin", "ethereum", "solana"]');
@@ -29,15 +32,78 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
     }
   });
 
+  const finnhubClientRef = useRef<FinnhubClient | null>(null);
+
   useEffect(() => {
     fetchInitialData();
+
+    // Initialize permanent live WebSocket streaming via Finnhub client
+    const client = new FinnhubClient({
+      apiKey: 'dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0',
+      autoSubscribeTickers: [
+        'BINANCE:BTCUSDT',
+        'BINANCE:ETHUSDT',
+        'BINANCE:SOLUSDT',
+        'BINANCE:XRPUSDT',
+        'BINANCE:ADAUSDT',
+        'BINANCE:AVAXUSDT',
+      ],
+      onStatusChange: (status) => {
+        setWsConnected(status === 'CONNECTED');
+      },
+      onTrade: (trade: FinnhubTrade) => {
+        handleIncomingTrade(trade);
+      },
+    });
+
+    finnhubClientRef.current = client;
+
+    return () => {
+      client.disconnect();
+    };
   }, []);
+
+  const handleIncomingTrade = (trade: FinnhubTrade) => {
+    const symbolMap: Record<string, string> = {
+      'BINANCE:BTCUSDT': 'bitcoin',
+      'BINANCE:ETHUSDT': 'ethereum',
+      'BINANCE:SOLUSDT': 'solana',
+      'BINANCE:XRPUSDT': 'ripple',
+      'BINANCE:ADAUSDT': 'cardano',
+      'BINANCE:AVAXUSDT': 'avalanche-2',
+    };
+
+    const coinId = symbolMap[trade.s];
+    if (!coinId) return;
+
+    setCoins((prevCoins) =>
+      prevCoins.map((c) => {
+        if (c.id === coinId) {
+          return {
+            ...c,
+            price: trade.p,
+          };
+        }
+        return c;
+      })
+    );
+
+    setSelectedCoin((prev: any) => {
+      if (prev && prev.id === coinId) {
+        return {
+          ...prev,
+          price: trade.p,
+        };
+      }
+      return prev;
+    });
+  };
 
   useEffect(() => {
     if (selectedCoin) {
       fetchChart(selectedCoin.id, timeframe);
     }
-  }, [selectedCoin, timeframe]);
+  }, [selectedCoin?.id, timeframe]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -99,15 +165,25 @@ const [loadingChart, setLoadingChart] = useState<boolean>(false);
       {/* Editorial Header - Micro-1 Polished */}
       <div className="relative rounded-3xl overflow-hidden micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 md:p-8 micro-glow-cyan shadow-xl">
         <div className="max-w-2xl space-y-3 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 text-xs font-semibold shadow-inner">
-            <ChartIcon className="w-3.5 h-3.5" />
-            <span>Pure Market Intelligence • Non-Custodial Data Feed</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 text-xs font-semibold shadow-inner">
+              <ChartIcon className="w-3.5 h-3.5" />
+              <span>Pure Market Intelligence • Finnhub Feed</span>
+            </div>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
+              wsConnected
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+            }`}>
+              <Radio className={`w-3 h-3 ${wsConnected ? 'animate-pulse' : ''}`} />
+              <span>{wsConnected ? 'WebSocket Live Stream Active' : 'Connecting Stream...'}</span>
+            </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-950 dark:text-white tracking-tight">
             TradingView Market Intelligence
           </h1>
           <p className="text-sm md:text-base text-gray-600 dark:text-[#94A3B8] leading-relaxed">
-            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent on-chain coin metrics.
+            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and streaming Finnhub WebSocket trades.
           </p>
         </div>
       </div>

@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     FOOTBALL_API_KEY: str | None = os.getenv("FOOTBALL_API_KEY", None)
     FOOTBALL_API_PROVIDER: str = os.getenv("FOOTBALL_API_PROVIDER", "sportapi")
 
+    # Finnhub Market Data API Integration
+    FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0")
+
     
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),

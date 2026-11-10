@@ -14,13 +14,13 @@ router = APIRouter(tags=["Multi-Domain Intelligence"])
 @router.get("/crypto/overview")
 async def get_crypto_overview():
     """Returns global crypto market cap, BTC dominance, volume, and top movers."""
-    return CryptoIntelligenceService.get_global_market_overview()
+    return await CryptoIntelligenceService.get_global_market_overview()
 
 
 @router.get("/crypto/coins")
 async def get_crypto_coins(search: Optional[str] = Query(None)):
     """Returns list of tracked cryptocurrencies with real-time stats."""
-    return CryptoIntelligenceService.get_coins(search=search)
+    return await CryptoIntelligenceService.get_coins(search=search)
 
 
 @router.get("/crypto/coins/{coin_id}")
@@ -38,7 +38,7 @@ async def get_coin_chart(
     timeframe: str = Query("7d", description="1h, 24h, 7d, 30d, 90d, 1y, all"),
 ):
     """Generates interactive multi-timeframe price chart points."""
-    return CryptoIntelligenceService.generate_chart_history(coin_id=coin_id, timeframe=timeframe)
+    return await CryptoIntelligenceService.generate_chart_history(coin_id=coin_id, timeframe=timeframe)
 
 
 # ─────────────────────────────────────────────────────────────
