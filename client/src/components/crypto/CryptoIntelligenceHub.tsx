@@ -164,6 +164,18 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
 
   return (
     <div className="space-y-6">
+      {/* Editorial Platform Header */}
+      <div className="relative rounded-3xl overflow-hidden micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 md:p-8 micro-glow-cyan shadow-xl">
+        <div className="max-w-3xl space-y-2 relative z-10">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-950 dark:text-white tracking-tight">
+            TradingView Market Intelligence
+          </h1>
+          <p className="text-sm md:text-base text-gray-600 dark:text-[#94A3B8] leading-relaxed">
+            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent on-chain coin metrics.
+          </p>
+        </div>
+      </div>
+
       {/* Overview Metric Cards */}
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
