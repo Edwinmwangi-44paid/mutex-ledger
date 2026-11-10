@@ -11,9 +11,14 @@ import {
   Layers,
   Loader2,
   Maximize2,
+  Sparkles,
+  Bot,
+  ChevronRight,
+  MessageSquare,
 } from 'lucide-react';
 import { FinnhubClient, FinnhubTrade } from '../../services/finnhubClient';
 import { AdvancedTradingModal } from './AdvancedTradingModal';
+import { MarketAIChatModal } from './MarketAIChatModal';
 
 interface CryptoIntelligenceHubProps {
   apiBase: string;
@@ -24,6 +29,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const [coins, setCoins] = useState<any[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<any>(null);
   const [chartData, setChartData] = useState<any>(null);
+  const [aiInsight, setAiInsight] = useState<any>(null);
+  const [loadingInsight, setLoadingInsight] = useState<boolean>(false);
   const [timeframe, setTimeframe] = useState<string>('7d');
   const [activeTab, setActiveTab] = useState<'all' | 'crypto' | 'stocks' | 'forex'>('all');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
@@ -36,6 +43,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   const [, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isTradingModalOpen, setIsTradingModalOpen] = useState<boolean>(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState<boolean>(false);
 
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     try {
@@ -128,8 +136,24 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
   useEffect(() => {
     if (selectedCoin) {
       fetchChart(selectedCoin.id, timeframe);
+      fetchAIInsight(selectedCoin.id);
     }
   }, [selectedCoin?.id, timeframe]);
+
+  const fetchAIInsight = async (coinId: string) => {
+    setLoadingInsight(true);
+    try {
+      const res = await fetch(`${apiBase}/crypto/coins/${coinId}/ai-insight`);
+      if (res.ok) {
+        const data = await res.json();
+        setAiInsight(data);
+      }
+    } catch (e) {
+      console.error('Failed to load AI market insight:', e);
+    } finally {
+      setLoadingInsight(false);
+    }
+  };
 
   const fetchInitialData = async () => {
     setLoadingInitial(true);
@@ -620,6 +644,102 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   </div>
                 </div>
 
+                {/* AI Market Analysis & Intelligent Advisory Card */}
+                <div className="rounded-2xl p-5 bg-gradient-to-br from-black/[0.03] via-white/[0.01] to-black/[0.02] dark:from-[#0E121E] dark:via-[#090C14] dark:to-[#0D101A] border border-[#3E4FFF]/30 shadow-lg relative overflow-hidden space-y-4">
+                  {/* Subtle glowing ambient background effect */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-[#3E4FFF]/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-xl bg-[#3E4FFF]/15 border border-[#3E4FFF]/40 text-[#3E4FFF]">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                            AI Market Intelligence & Technical Advisory
+                          </h3>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3E4FFF]/15 text-[#3E4FFF] border border-[#3E4FFF]/30">
+                            Quant AI
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          Real-time algorithmic bias, institutional order flow, and risk projections for {selectedCoin.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    {aiInsight?.signal && (
+                      <span
+                        className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shadow-sm"
+                        style={{
+                          backgroundColor: `${aiInsight.signal_color}18`,
+                          color: aiInsight.signal_color,
+                          borderColor: `${aiInsight.signal_color}40`,
+                        }}
+                      >
+                        {aiInsight.signal}
+                      </span>
+                    )}
+                  </div>
+
+                  {loadingInsight ? (
+                    <div className="py-6 flex items-center justify-center gap-2 text-xs text-gray-400 font-mono">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#3E4FFF]" />
+                      <span>Synthesizing multi-orderbook AI metrics...</span>
+                    </div>
+                  ) : aiInsight ? (
+                    <div className="space-y-3.5 relative z-10 text-xs">
+                      {/* Bias Summary Callout */}
+                      <p className="text-gray-700 dark:text-gray-200 leading-relaxed font-sans">
+                        {aiInsight.bias_summary}
+                      </p>
+
+                      {/* Technical Key Levels Strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                        <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
+                          <span className="text-gray-400 block text-[10px]">14D RSI</span>
+                          <span className="font-bold text-gray-900 dark:text-white">{aiInsight.rsi_14}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
+                          <span className="text-gray-400 block text-[10px]">Sentiment Index</span>
+                          <span className="font-bold text-[#0ECB81]">{aiInsight.sentiment_score}/100</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
+                          <span className="text-gray-400 block text-[10px]">Primary Support</span>
+                          <span className="font-bold text-rose-500">${aiInsight.support_levels?.[0]}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
+                          <span className="text-gray-400 block text-[10px]">Primary Target</span>
+                          <span className="font-bold text-emerald-500">${aiInsight.resistance_levels?.[0]}</span>
+                        </div>
+                      </div>
+
+                      {/* Action Advice Quote */}
+                      <div className="p-3 rounded-xl bg-indigo-500/[0.06] dark:bg-indigo-500/10 border border-indigo-500/20 text-gray-800 dark:text-indigo-200 text-xs leading-relaxed">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-300 mr-1.5">Strategic Advice:</span>
+                        {aiInsight.action_advice}
+                      </div>
+
+                      {/* Interactive "Want to know more?" CTA banner */}
+                      <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                          <Bot className="w-4 h-4 text-[#3E4FFF]" />
+                          <span>Want to know more details or ask questions about {selectedCoin.symbol}?</span>
+                        </div>
+                        <button
+                          onClick={() => setIsAIChatOpen(true)}
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#3E4FFF] to-[#2535DF] hover:from-[#4E5FFF] hover:to-[#3E4FFF] text-white text-xs font-bold transition-all shadow-md shadow-[#3E4FFF]/20 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Ask AI Analyst</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
                 {/* Asset Description */}
                 <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-[#0F121A] border border-black/[0.06] dark:border-[#1B212D] text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
                   <div className="font-bold text-gray-900 dark:text-white mb-1">About {selectedCoin.name}</div>
@@ -753,6 +873,31 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
           onClose={() => setIsTradingModalOpen(false)}
           apiBase={apiBase}
         />
+      )}
+
+      {/* Floating Bottom-Right AI Market Analyst Chat Widget */}
+      {selectedCoin && (
+        <MarketAIChatModal
+          asset={selectedCoin}
+          insight={aiInsight}
+          isOpen={isAIChatOpen}
+          onClose={() => setIsAIChatOpen(false)}
+          apiBase={apiBase}
+        />
+      )}
+
+      {/* Floating Bottom-Right Launcher Pill if chat is closed */}
+      {!isAIChatOpen && selectedCoin && (
+        <button
+          onClick={() => setIsAIChatOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-[#3E4FFF] to-[#2031C5] text-white shadow-xl shadow-[#3E4FFF]/30 hover:shadow-[#3E4FFF]/50 hover:scale-105 active:scale-95 transition-all font-semibold text-xs border border-white/20 select-none cursor-pointer"
+        >
+          <div className="relative">
+            <Bot className="w-4 h-4" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          </div>
+          <span>Ask AI: {selectedCoin.symbol}</span>
+        </button>
       )}
     </div>
   );

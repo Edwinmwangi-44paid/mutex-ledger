@@ -46,6 +46,22 @@ async def get_coin_chart(
     return await CryptoIntelligenceService.generate_chart_history(coin_id=coin_id, timeframe=timeframe)
 
 
+@router.get("/crypto/coins/{coin_id}/ai-insight")
+async def get_coin_ai_insight(coin_id: str):
+    """Generates quantitative AI technical review, support/resistance targets, and market advice."""
+    return CryptoIntelligenceService.generate_ai_market_insight(coin_id=coin_id)
+
+
+@router.post("/crypto/coins/{coin_id}/ai-chat")
+async def chat_with_coin_ai(
+    coin_id: str,
+    payload: dict,
+):
+    """Interactive AI chat endpoint answering market, entry, and sentiment queries for the coin."""
+    msg = payload.get("message", "")
+    return CryptoIntelligenceService.get_ai_chat_response(coin_id=coin_id, message=msg)
+
+
 # ─────────────────────────────────────────────────────────────
 # ENTERTAINMENT & STREAMING DISCOVERY ENDPOINTS
 # ─────────────────────────────────────────────────────────────
