@@ -168,10 +168,10 @@ html:not(.dark) .micro-glow-blue {
   transform: scale(0.98);
 }
 
-/* Minimalist Scrollbar */
+/* Minimalist Ultra-Thin Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 3.5px;
+  height: 3.5px;
 }
 
 /* Micro-Smooth Scrolling */
@@ -195,17 +195,40 @@ html {
   animation: microFadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-::-webkit-scrollbar-track {
-  background: #050608;
+/* Scrollbar Track & Thumb Theme Adaptation */
+html.dark ::-webkit-scrollbar-track {
+  background: rgba(5, 6, 8, 0.4);
 }
 
-::-webkit-scrollbar-thumb {
-  background: #19202E;
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #2D3A54;
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 9999px;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Thin Scrollbar Utility Class */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 3.5px;
+  height: 3.5px;
+}
+.thin-scrollbar {
+  scrollbar-width: thin;
 }
 
 /* Dark Autofill Override */

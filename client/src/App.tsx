@@ -243,10 +243,16 @@ export const App: React.FC = () => {
 
       {/* Modern Platform Footer - Shown inside platform */}
       {!hidePlatformShell && (
-        <footer className="border-t border-[#1A1F2B] bg-[#0A0C0F] px-6 py-6 text-xs text-gray-500">
+        <footer className={`border-t px-6 py-6 text-xs transition-colors duration-200 select-none ${
+          isDark
+            ? 'border-white/[0.07] bg-[#07090D] text-gray-400'
+            : 'border-black/[0.08] bg-[#F3F4F6] text-gray-600 shadow-inner'
+        }`}>
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <span className="font-semibold text-gray-300">PesaFlip Intelligence</span>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+              <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                PesaFlip Intelligence
+              </span>
               <span>•</span>
               <span>Sports AI Predictions</span>
               <span>•</span>

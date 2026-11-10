@@ -344,10 +344,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
           )}
 
           {/* Main Dual Grid: Interactive Chart + Paginated Infinite-Scroll Assets */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             {/* Left Column: Interactive Asset Explorer & Live Chart (7 cols) */}
             {selectedCoin && (
-              <div className="lg:col-span-7 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 space-y-6 shadow-sm">
+              <div className="lg:col-span-7 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 space-y-6 shadow-sm flex flex-col justify-between">
                 {/* Coin Header */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -748,10 +748,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               </div>
             )}
 
-            {/* Right Column: Tracked Assets Table with Infinite Scroll (5 cols) */}
-            <div className="lg:col-span-5 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-4 flex flex-col space-y-3 shadow-sm">
+            {/* Right Column: Tracked Assets Table with Infinite Scroll (5 cols, full height matching left column) */}
+            <div className="lg:col-span-5 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-4 flex flex-col space-y-3 shadow-sm h-full min-h-[720px] max-h-[1050px]">
               {/* Category Tabs: All / Crypto / Stocks / Forex */}
-              <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-xl">
+              <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-xl shrink-0">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'crypto', label: 'Crypto' },
@@ -773,7 +773,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               </div>
 
               {/* Search Bar */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
@@ -784,8 +784,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                 />
               </div>
 
-              {/* Coins & Currencies Scroll Container with Incremental Loader */}
-              <div className="flex-1 overflow-y-auto space-y-1.5 max-h-[640px] pr-1">
+              {/* Coins & Currencies Scroll Container - fills vertical space with ultra-thin scrollbar */}
+              <div className="flex-1 overflow-y-auto space-y-1.5 thin-scrollbar pr-1 min-h-0">
                 {coins.map((coin, index) => {
                   const isSelected = selectedCoin?.id === coin.id;
                   const isWatched = watchlist.includes(coin.id);
