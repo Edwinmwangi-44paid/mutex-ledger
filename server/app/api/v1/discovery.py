@@ -131,16 +131,16 @@ async def get_discovery_feed():
                 "league": f.get("league", {}).get("name", "Football"),
             })
 
-            if len(trending_sports) >= 4:
+            if len(trending_sports) >= 12:
                 break
 
     # If no external fixtures available, use empty or clean minimal fallback
     if not trending_sports:
         trending_sports = []
 
-    # Get live top coins from CryptoIntelligenceService
-    coins_res = await CryptoIntelligenceService.get_coins(page=1, limit=5)
-    top_coins = coins_res.get("items", [])[:4]
+    # Get live top coins from CryptoIntelligenceService (expanded for rich scrollable live market ticker)
+    coins_res = await CryptoIntelligenceService.get_coins(page=1, limit=15)
+    top_coins = coins_res.get("items", [])[:12]
 
     return {
         "editorial_hero": {
