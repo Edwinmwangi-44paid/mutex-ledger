@@ -340,17 +340,15 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 md:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#08090D] animate-in fade-in duration-150 select-none overflow-hidden">
       <div
         ref={modalRef}
-        className={`w-full ${
-          isFullscreen ? 'h-full max-h-none rounded-none' : 'max-w-7xl h-[92vh] rounded-2xl'
-        } bg-[#08090D] border border-white/[0.08] flex flex-col shadow-2xl overflow-hidden font-sans`}
+        className="w-full h-full flex flex-col bg-[#08090D] overflow-hidden font-sans"
       >
-        {/* Top Professional Navigation Bar (GoCharting / TradingView Style) */}
-        <div className="h-14 bg-[#0D0F17] border-b border-white/[0.08] flex items-center justify-between px-3 md:px-5 shrink-0 select-none">
+        {/* Top Professional Navigation Bar (Full Width TradingView Pro Style) */}
+        <div className="h-12 md:h-14 bg-[#0D0F17] border-b border-white/[0.08] flex items-center justify-between px-3 md:px-4 shrink-0 select-none">
           {/* Left Controls: Symbol, Timeframes, and Order Buttons */}
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
             {/* Symbol & Category */}
             <div className="flex items-center gap-2 pr-3 border-r border-white/10 shrink-0">
               <img
@@ -373,10 +371,10 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
 
             {/* Buy / Sell Quick Buttons */}
             <div className="hidden sm:flex items-center gap-1.5 pr-3 border-r border-white/10 shrink-0">
-              <button className="px-3 py-1 rounded bg-[#F6465D] hover:bg-[#ff3b54] text-white text-xs font-bold transition-all shadow-sm active:scale-95">
+              <button className="px-3 py-1 rounded bg-[#F6465D] hover:bg-[#ff3b54] text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer">
                 SELL
               </button>
-              <button className="px-3 py-1 rounded bg-[#0ECB81] hover:bg-[#00e88f] text-black text-xs font-bold transition-all shadow-sm active:scale-95">
+              <button className="px-3 py-1 rounded bg-[#0ECB81] hover:bg-[#00e88f] text-black text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer">
                 BUY
               </button>
             </div>
@@ -390,7 +388,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
                     setTimeframe(t.label);
                     loadChartHistory(asset.id, t.tf);
                   }}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-all ${
+                  className={`px-2 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
                     timeframe === t.label
                       ? 'bg-white/15 text-white font-bold'
                       : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -406,7 +404,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
               <button
                 onClick={() => toggleChartStyle('candles')}
                 title="Candlestick Chart"
-                className={`p-1.5 rounded transition-all ${
+                className={`p-1.5 rounded transition-all cursor-pointer ${
                   chartStyle === 'candles' ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -415,7 +413,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
               <button
                 onClick={() => toggleChartStyle('line')}
                 title="Line Chart"
-                className={`p-1.5 rounded transition-all ${
+                className={`p-1.5 rounded transition-all cursor-pointer ${
                   chartStyle === 'line' ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -427,7 +425,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
             <div className="hidden lg:flex items-center gap-1 pl-2 border-l border-white/10 shrink-0">
               <button
                 onClick={toggleSMA}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all cursor-pointer ${
                   showSMA ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -437,7 +435,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
 
               <button
                 onClick={toggleVolume}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all cursor-pointer ${
                   showVolume ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -447,21 +445,30 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
             </div>
           </div>
 
-          {/* Right Controls: Fullscreen, Screenshot, Close */}
+          {/* Right Controls: Fullscreen & Exit Page */}
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+              onClick={() => {
+                if (!document.fullscreenElement) {
+                  document.documentElement.requestFullscreen().catch(() => {});
+                  setIsFullscreen(true);
+                } else {
+                  document.exitFullscreen().catch(() => {});
+                  setIsFullscreen(false);
+                }
+              }}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
               title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-rose-500/20 transition-colors"
-              title="Close (Esc)"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 text-gray-300 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer text-xs font-medium"
+              title="Return to Markets (Esc)"
             >
-              <X className="w-5 h-5 text-gray-300 hover:text-rose-400" />
+              <span>Exit Terminal</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
