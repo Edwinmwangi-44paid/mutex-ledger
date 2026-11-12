@@ -112,26 +112,32 @@ export const UnifiedHome: React.FC<UnifiedHomeProps> = ({ apiBase }) => {
             </div>
 
             <div className="space-y-2.5">
-              {feed.trending_sports.map((m: any) => (
-                <div
-                  key={m.id}
-                  onClick={() => navigate(`/sports/${m.id}`)}
-                  className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] transition-all cursor-pointer space-y-1.5"
-                >
-                  <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
-                    <span>{m.league}</span>
-                    <span className="font-bold text-rose-500 dark:text-red-400">{m.status}</span>
+              {feed.trending_sports && feed.trending_sports.length > 0 ? (
+                feed.trending_sports.map((m: any) => (
+                  <div
+                    key={m.id}
+                    onClick={() => navigate(`/sports/${m.id}`)}
+                    className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] transition-all cursor-pointer space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+                      <span>{m.league}</span>
+                      <span className="font-bold text-rose-500 dark:text-red-400">{m.status}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-bold text-gray-900 dark:text-white">
+                      <span>{m.home_team} vs {m.away_team}</span>
+                      {m.score && <span>{m.score}</span>}
+                    </div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
+                      <Sparkles className="w-3 h-3" />
+                      <span>AI Pick: {m.ai_outcome}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-gray-900 dark:text-white">
-                    <span>{m.home_team} vs {m.away_team}</span>
-                    {m.score && <span>{m.score}</span>}
-                  </div>
-                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
-                    <Sparkles className="w-3 h-3" />
-                    <span>AI Pick: {m.ai_outcome}</span>
-                  </div>
+                ))
+              ) : (
+                <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] text-center text-xs text-gray-400">
+                  No matches currently in-play. View Match Centre for upcoming fixtures.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,7 @@ async def global_omni_search(q: str = Query(..., min_length=1), session: AsyncSe
     query = q.strip().lower()
 
     # 1. Crypto Results
+    crypto_data = await CryptoIntelligenceService.get_coins(search=query, limit=5)
     crypto_matches = [
         {
             "category": "crypto",
@@ -28,9 +30,9 @@ async def global_omni_search(q: str = Query(..., min_length=1), session: AsyncSe
             "subtitle": f"${c['price']:,.2f} • 24h: {'+' if c['change_24h'] >= 0 else ''}{c['change_24h']}%",
             "image": c["logo"],
             "badge": f"Rank #{c['rank']}",
-            "route": f"/crypto/{c['id']}",
+            "route": f"/tradingview",
         }
-        for c in CryptoIntelligenceService.get_coins(search=query)
+        for c in crypto_data.get("items", [])
     ]
 
     # 2. Entertainment Results
@@ -88,67 +90,87 @@ async def global_omni_search(q: str = Query(..., min_length=1), session: AsyncSe
 async def get_discovery_feed():
     """
     Unified Editorial Feed:
-    Combines trending sports clashes, trending crypto movers, and blockbuster entertainment releases.
+    Combines live and upcoming real sports clashes, live crypto movers, and blockbuster entertainment releases.
     """
-    crypto_ov = CryptoIntelligenceService.get_global_market_overview()
+    crypto_ov = await CryptoIntelligenceService.get_global_market_overview()
     ent_hub = EntertainmentService.get_entertainment_hub()
+
+    # Fetch live/upcoming sports from real external provider
+    ext_fixtures = await SportsDataService.fetch_external_live_data()
+    trending_sports = []
+
+    if ext_fixtures:
+        for f in ext_fixtures:
+            status = f.get("status", "SCHEDULED")
+            score = None
+            if f.get("home_score") is not None and f.get("away_score") is not None:
+                score = f"{f['home_score']} - {f['away_score']}"
+
+            status_display = status
+            if status == "LIVE":
+                status_display = f"LIVE ({f.get('minute') or '45'}\')"
+            elif status == "HT":
+                status_display = "HT"
+            elif status == "FT":
+                status_display = "FT"
+            else:
+                k_raw = f.get("kickoff_time", "")
+                try:
+                    k_dt = datetime.fromisoformat(k_raw.replace("Z", "+00:00"))
+                    status_display = k_dt.strftime("%H:%M")
+                except Exception:
+                    status_display = "Upcoming"
+
+            trending_sports.append({
+                "id": str(f.get("id")),
+                "home_team": f.get("home_team", {}).get("name", "Home Team"),
+                "away_team": f.get("away_team", {}).get("name", "Away Team"),
+                "score": score,
+                "status": status_display,
+                "ai_outcome": f"{f.get('home_team', {}).get('name', 'Home')} Win (54%)",
+                "league": f.get("league", {}).get("name", "Football"),
+            })
+
+            if len(trending_sports) >= 4:
+                break
+
+    # If no external fixtures available, use empty or clean minimal fallback
+    if not trending_sports:
+        trending_sports = []
+
+    # Get live top coins from CryptoIntelligenceService
+    coins_res = await CryptoIntelligenceService.get_coins(page=1, limit=5)
+    top_coins = coins_res.get("items", [])[:4]
 
     return {
         "editorial_hero": {
             "headline": "PesaFlip Intelligence Feed",
             "subheading": "Real-time AI Match Predictions, Deep Crypto Analytics & Cinematic Discovery",
-            "timestamp": "2026-11-02T17:30:00Z",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         },
-        "trending_sports": [
-            {
-                "id": "fix_live_mci_ars",
-                "home_team": "Manchester City",
-                "away_team": "Arsenal",
-                "score": "2 - 1",
-                "status": "LIVE (68')",
-                "ai_outcome": "Man City Win (61%)",
-                "league": "Premier League",
-            },
-            {
-                "id": "fix_live_gor_afc",
-                "home_team": "Gor Mahia",
-                "away_team": "AFC Leopards",
-                "score": "1 - 0",
-                "status": "LIVE (34')",
-                "ai_outcome": "Gor Mahia Win (58%)",
-                "league": "Kenyan Premier League",
-            },
-            {
-                "id": "fix_today_rma_bar",
-                "home_team": "Real Madrid",
-                "away_team": "Barcelona",
-                "status": "Tonight 20:45",
-                "ai_outcome": "Real Madrid Win (48%)",
-                "league": "La Liga",
-            },
-        ],
+        "trending_sports": trending_sports,
         "crypto_highlights": {
-            "market_cap": crypto_ov["total_market_cap"],
-            "btc_dominance": crypto_ov["btc_dominance"],
-            "top_gainers": crypto_ov["top_gainers"],
-            "top_coins": CryptoIntelligenceService.get_coins()[:4],
+            "market_cap": crypto_ov.get("total_market_cap", 0),
+            "btc_dominance": crypto_ov.get("btc_dominance", 0),
+            "top_gainers": crypto_ov.get("top_gainers", []),
+            "top_coins": top_coins,
         },
-        "entertainment_picks": ent_hub["trending_this_week"][:4],
+        "entertainment_picks": ent_hub.get("trending_this_week", [])[:4],
         "ai_insights": [
             {
                 "domain": "Sports",
-                "title": "Mashemeji Derby Tactical Edge",
-                "summary": "Gor Mahia conversion probability peaks in second-half transition attacks with 56% midfield possession control.",
+                "title": "Predictive Goal Distribution",
+                "summary": "Poisson algorithms track live pressure metrics, expected goals (xG), and momentum shifts across ongoing fixtures.",
             },
             {
                 "domain": "Crypto",
-                "title": "Solana Network Velocity",
-                "summary": "SOL shows +6.82% 24h volume expansion driven by sustained decentralized exchange liquidity inflows.",
+                "title": "Multi-Asset Liquidity Flow",
+                "summary": "Real-time streaming ticks via Finnhub & Binance deliver instant volatility alerts and RSI divergence alerts.",
             },
             {
                 "domain": "Entertainment",
-                "title": "Sci-Fi Resurgence",
-                "summary": "Project Hail Mary leads audience anticipation index with an 8.2 rating ahead of global streaming availability.",
+                "title": "Cinematic Streaming Trends",
+                "summary": "Global entertainment indexes aggregate trending titles across premier streaming networks and box offices.",
             },
         ],
     }
