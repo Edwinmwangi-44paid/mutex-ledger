@@ -475,7 +475,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                 {/* Interactive SVG Chart Canvas (Candlestick + Line Modes) with Pro Fullscreen Click */}
                 <div
                   onClick={() => setIsTradingModalOpen(true)}
-                  className="group/canvas h-72 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/50 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-4 shadow-inner cursor-pointer transition-all hover:border-[#3E4FFF]/50 hover:shadow-lg hover:shadow-[#3E4FFF]/5 overflow-hidden"
+                  className="group/canvas h-80 relative flex items-center justify-center bg-black/[0.02] dark:bg-black/50 rounded-2xl border border-black/[0.08] dark:border-white/[0.06] p-3 sm:p-4 shadow-inner cursor-pointer transition-all hover:border-[#3E4FFF]/50 hover:shadow-lg hover:shadow-[#3E4FFF]/5 overflow-hidden"
                   title="Click to launch full GoCharting Live Pro Terminal"
                 >
                   {/* Subtle hover launch pro banner */}
@@ -487,7 +487,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   {loadingChart ? (
                     <div className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Loading live market candles...</div>
                   ) : chartData && chartData.points?.length > 1 ? (
-                    <svg className="w-full h-full overflow-visible" viewBox="0 0 600 240">
+                    <svg className="w-full h-full overflow-visible" viewBox="0 0 640 260">
                       <defs>
                         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.30" />
@@ -500,35 +500,76 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                         const min = Math.min(...candles.map((p: any) => p.low ?? p.price));
                         const max = Math.max(...candles.map((p: any) => p.high ?? p.price));
                         const range = max - min || 1;
-                        const svgW = 600;
-                        const svgH = 240;
-                        const topPadding = 20;
-                        const bottomPadding = 20;
-                        const chartH = svgH - topPadding - bottomPadding;
+                        const svgW = 640;
+                        const svgH = 260;
+                        const leftMargin = 16;
+                        const rightPriceColWidth = 64; // Dedicated right margin reserved for price scale
+                        const topPadding = 16;
+                        const bottomDateAxisHeight = 26; // Dedicated bottom margin for X-axis timestamps
+                        const chartW = svgW - leftMargin - rightPriceColWidth;
+                        const chartH = svgH - topPadding - bottomDateAxisHeight;
 
-                        const getY = (price: number) => svgH - bottomPadding - ((price - min) / range) * chartH;
-                        const barW = Math.max(3, (svgW / candles.length) * 0.7);
+                        const getY = (price: number) => topPadding + (1 - (price - min) / range) * chartH;
+                        const barW = Math.max(3, Math.min(10, (chartW / candles.length) * 0.72));
+
+                        // X-axis date/time label formatter depending on selected timeframe
+                        const formatXDate = (rawTs: any) => {
+                          const dt = new Date(rawTs);
+                          if (isNaN(dt.getTime())) return '';
+                          if (['1h', '24h'].includes(timeframe.toLowerCase())) {
+                            return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          } else if (['7d', '30d'].includes(timeframe.toLowerCase())) {
+                            return `${dt.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                          } else {
+                            return dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                          }
+                        };
 
                         return (
                           <>
-                            {/* Grid lines */}
+                            {/* Horizontal Grid lines & Non-Overlapping Price Column on Far Right */}
                             {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
                               const y = topPadding + chartH * pct;
                               const pVal = max - range * pct;
                               return (
                                 <g key={idx}>
-                                  <line x1="0" y1={y} x2={svgW} y2={y} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                                  <text x={svgW - 5} y={y - 3} fill="gray" fontSize="9" textAnchor="end" fontFamily="monospace">
-                                    ${pVal.toFixed(pVal < 2 ? 4 : 2)}
+                                  <line
+                                    x1={leftMargin}
+                                    y1={y}
+                                    x2={leftMargin + chartW}
+                                    y2={y}
+                                    stroke="rgba(255,255,255,0.06)"
+                                    strokeDasharray="3 3"
+                                  />
+                                  {/* Right Y-Axis Scale (isolated beyond candles) */}
+                                  <text
+                                    x={svgW - 4}
+                                    y={y + 3}
+                                    fill="#848E9C"
+                                    fontSize="9.5"
+                                    textAnchor="end"
+                                    fontFamily="'JetBrains Mono', monospace"
+                                    className="select-none font-semibold"
+                                  >
+                                    ${pVal < 2 ? pVal.toFixed(4) : pVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </text>
                                 </g>
                               );
                             })}
 
+                            {/* Boundary separator line between candle drawing area and price axis */}
+                            <line
+                              x1={leftMargin + chartW}
+                              y1={topPadding}
+                              x2={leftMargin + chartW}
+                              y2={topPadding + chartH}
+                              stroke="rgba(255,255,255,0.08)"
+                            />
+
                             {/* CANDLESTICK MODE */}
                             {chartType === 'candlestick' &&
                               candles.map((c: any, idx: number) => {
-                                const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                                const x = leftMargin + (idx / Math.max(1, candles.length - 1)) * chartW;
                                 const isGreen = c.close >= c.open;
                                 const yOpen = getY(c.open);
                                 const yClose = getY(c.close);
@@ -536,7 +577,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                                 const yLow = getY(c.low);
                                 const rectY = Math.min(yOpen, yClose);
                                 const rectH = Math.max(2, Math.abs(yClose - yOpen));
-                                const color = isGreen ? '#10B981' : '#F43F5E';
+                                const color = isGreen ? '#0ECB81' : '#F6465D';
 
                                 return (
                                   <g
@@ -562,19 +603,19 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                             {chartType === 'line' &&
                               (() => {
                                 const coords = candles.map((p: any, idx: number) => {
-                                  const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                                  const x = leftMargin + (idx / Math.max(1, candles.length - 1)) * chartW;
                                   const y = getY(p.close || p.price);
                                   return `${x},${y}`;
                                 });
                                 const pathLine = `M ${coords.join(' L ')}`;
-                                const pathArea = `${pathLine} L ${svgW - 20},${svgH} L 20,${svgH} Z`;
+                                const pathArea = `${pathLine} L ${leftMargin + chartW},${topPadding + chartH} L ${leftMargin},${topPadding + chartH} Z`;
 
                                 return (
                                   <>
                                     <path d={pathArea} fill="url(#chartGradient)" />
                                     <path d={pathLine} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" />
                                     {candles.map((c: any, idx: number) => {
-                                      const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                                      const x = leftMargin + (idx / Math.max(1, candles.length - 1)) * chartW;
                                       const y = getY(c.close || c.price);
                                       return (
                                         <circle
@@ -597,7 +638,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                             {showIndicators &&
                               (() => {
                                 const smaCoords = candles.map((p: any, idx: number) => {
-                                  const x = (idx / (candles.length - 1)) * (svgW - 40) + 20;
+                                  const x = leftMargin + (idx / Math.max(1, candles.length - 1)) * chartW;
                                   const y = getY(p.sma7 || p.close);
                                   return `${x},${y}`;
                                 });
@@ -611,6 +652,50 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                                   />
                                 );
                               })()}
+
+                            {/* Bottom X-Axis Divider Line */}
+                            <line
+                              x1={leftMargin}
+                              y1={topPadding + chartH}
+                              x2={leftMargin + chartW}
+                              y2={topPadding + chartH}
+                              stroke="rgba(255,255,255,0.08)"
+                            />
+
+                            {/* Real Date/Time Ticks on X-Axis */}
+                            {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                              const candleIndex = Math.min(
+                                candles.length - 1,
+                                Math.floor(pct * (candles.length - 1))
+                              );
+                              const targetCandle = candles[candleIndex];
+                              if (!targetCandle) return null;
+                              const x = leftMargin + pct * chartW;
+                              const formattedTime = formatXDate(targetCandle.timestamp || targetCandle.time * 1000);
+
+                              return (
+                                <g key={idx}>
+                                  <line
+                                    x1={x}
+                                    y1={topPadding + chartH}
+                                    x2={x}
+                                    y2={topPadding + chartH + 4}
+                                    stroke="rgba(255,255,255,0.2)"
+                                  />
+                                  <text
+                                    x={x}
+                                    y={topPadding + chartH + 16}
+                                    fill="#848E9C"
+                                    fontSize="9"
+                                    textAnchor={idx === 0 ? 'start' : idx === 4 ? 'end' : 'middle'}
+                                    fontFamily="'JetBrains Mono', monospace"
+                                    className="select-none font-medium"
+                                  >
+                                    {formattedTime}
+                                  </text>
+                                </g>
+                              );
+                            })}
                           </>
                         );
                       })()}
