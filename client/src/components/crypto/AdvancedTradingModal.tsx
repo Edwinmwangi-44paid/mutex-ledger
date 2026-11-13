@@ -180,7 +180,7 @@ export const AdvancedTradingModal: React.FC<AdvancedTradingModalProps> = ({
     smaSeriesRef.current = smaSeries;
 
     // Crosshair hover subscriber
-    chart.subscribeCrosshairMove((param) => {
+    chart.subscribeCrosshairMove((param: any) => {
       if (!param || !param.time || !param.seriesData) {
         setHoveredData(null);
         return;
