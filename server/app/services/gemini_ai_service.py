@@ -23,7 +23,7 @@ class GeminiAIService:
     def _get_api_key_and_model(cls) -> tuple[str, str]:
         settings = get_settings()
         api_key = getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
-        model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash-lite") or "gemini-3.5-flash-lite"
+        model = getattr(settings, "GEMINI_MODEL", "gemini-3.1-flash-lite") or "gemini-3.1-flash-lite"
         return api_key, model
 
     @classmethod

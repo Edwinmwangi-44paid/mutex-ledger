@@ -416,6 +416,7 @@ class AIPredictionEngine:
             confidence_level=metrics["confidence"],
             disclaimer=cls.DISCLAIMER,
             engine_version="PesaFlip-PoissonAI-v2.1",
+            gemini_analysis=None,
         )
 
     @classmethod
@@ -517,6 +518,7 @@ class AIPredictionEngine:
             confidence_level="HIGH" if top_prob >= 65 else "MEDIUM",
             disclaimer=cls.DISCLAIMER,
             engine_version="PesaFlip-VolleyballAI-v1.0",
+            gemini_analysis=None,
         )
 
     @classmethod
@@ -617,5 +619,6 @@ class AIPredictionEngine:
             confidence_level="HIGH" if top_prob >= 65 else "MEDIUM",
             disclaimer=cls.DISCLAIMER,
             engine_version="PesaFlip-HoopsAI-v1.0",
+            gemini_analysis=None,
         )
 

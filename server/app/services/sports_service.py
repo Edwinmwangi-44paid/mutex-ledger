@@ -960,30 +960,32 @@ class SportsDataService:
                             )
 
                             is_live_or_ft = m_status in ["LIVE", "HT", "FT"]
-                            h_shots = max(h_score + 5, 12 if is_live_or_ft else 0)
-                            a_shots = max(a_score + 3, 9 if is_live_or_ft else 0)
-                            h_ontarget = max(h_score, int(h_shots * 0.44))
-                            a_ontarget = max(a_score, int(a_shots * 0.40))
-                            h_poss = 56 if h_score >= a_score else 48
+                            stats = None
+                            if is_live_or_ft:
+                                h_shots = max(h_score + 5, 12)
+                                a_shots = max(a_score + 3, 9)
+                                h_ontarget = max(h_score, int(h_shots * 0.44))
+                                a_ontarget = max(a_score, int(a_shots * 0.40))
+                                h_poss = 56 if h_score >= a_score else 48
 
-                            stats = MatchStatisticSchema(
-                                home_possession=h_poss,
-                                away_possession=100 - h_poss,
-                                home_shots_total=h_shots,
-                                away_shots_total=a_shots,
-                                home_shots_on_target=h_ontarget,
-                                away_shots_on_target=a_ontarget,
-                                home_xg=round(float(h_score * 0.72 + 0.5), 2),
-                                away_xg=round(float(a_score * 0.72 + 0.4), 2),
-                                home_corners=5 if is_live_or_ft else 0,
-                                away_corners=4 if is_live_or_ft else 0,
-                                home_fouls=11 if is_live_or_ft else 0,
-                                away_fouls=12 if is_live_or_ft else 0,
-                                home_yellow_cards=len([e for e in events_timeline if "yellow" in e["type"] and e["team"] == h_name]) or 1,
-                                away_yellow_cards=len([e for e in events_timeline if "yellow" in e["type"] and e["team"] == a_name]) or 1,
-                                home_red_cards=0,
-                                away_red_cards=0,
-                            )
+                                stats = MatchStatisticSchema(
+                                    home_possession=h_poss,
+                                    away_possession=100 - h_poss,
+                                    home_shots_total=h_shots,
+                                    away_shots_total=a_shots,
+                                    home_shots_on_target=h_ontarget,
+                                    away_shots_on_target=a_ontarget,
+                                    home_xg=round(float(h_score * 0.72 + 0.5), 2),
+                                    away_xg=round(float(a_score * 0.72 + 0.4), 2),
+                                    home_corners=5,
+                                    away_corners=4,
+                                    home_fouls=11,
+                                    away_fouls=12,
+                                    home_yellow_cards=len([e for e in events_timeline if "yellow" in e["type"] and e["team"] == h_name]) or 1,
+                                    away_yellow_cards=len([e for e in events_timeline if "yellow" in e["type"] and e["team"] == a_name]) or 1,
+                                    home_red_cards=0,
+                                    away_red_cards=0,
+                                )
 
                             result_pkg = {
                                 "fixture": FixtureSummary(
@@ -1196,32 +1198,34 @@ class SportsDataService:
                                     "text": ev_txt,
                                 })
 
-                            stats = MatchStatisticSchema(
-                                home_possession=int(float(h_s_dict.get("possessionPct") or (54 if h_score >= a_score else 48))),
-                                away_possession=int(float(a_s_dict.get("possessionPct") or (46 if h_score >= a_score else 52))),
-                                home_shots_total=h_shots,
-                                away_shots_total=a_shots,
-                                home_shots_on_target=h_ontarget,
-                                away_shots_on_target=a_ontarget,
-                                home_shots_off_target=h_offtarget,
-                                away_shots_off_target=a_offtarget,
-                                home_xg=round(float(h_ontarget * 0.32 + h_score * 0.65), 2),
-                                away_xg=round(float(a_ontarget * 0.32 + a_score * 0.65), 2),
-                                home_corners=int(h_s_dict.get("wonCorners") or 5),
-                                away_corners=int(a_s_dict.get("wonCorners") or 4),
-                                home_fouls=int(h_s_dict.get("foulsCommitted") or 11),
-                                away_fouls=int(a_s_dict.get("foulsCommitted") or 12),
-                                home_yellow_cards=int(h_s_dict.get("yellowCards") or 1),
-                                away_yellow_cards=int(a_s_dict.get("yellowCards") or 1),
-                                home_red_cards=int(h_s_dict.get("redCards") or 0),
-                                away_red_cards=int(a_s_dict.get("redCards") or 0),
-                                home_attacks=h_attacks,
-                                away_attacks=a_attacks,
-                                home_dangerous_attacks=h_dang_attacks,
-                                away_dangerous_attacks=a_dang_attacks,
-                                home_offsides=int(h_s_dict.get("offsides") or 1),
-                                away_offsides=int(a_s_dict.get("offsides") or 1),
-                            )
+                            stats = None
+                            if m_status in ["LIVE", "HT", "FT"]:
+                                stats = MatchStatisticSchema(
+                                    home_possession=int(float(h_s_dict.get("possessionPct") or (54 if h_score >= a_score else 48))),
+                                    away_possession=int(float(a_s_dict.get("possessionPct") or (46 if h_score >= a_score else 52))),
+                                    home_shots_total=h_shots,
+                                    away_shots_total=a_shots,
+                                    home_shots_on_target=h_ontarget,
+                                    away_shots_on_target=a_ontarget,
+                                    home_shots_off_target=h_offtarget,
+                                    away_shots_off_target=a_offtarget,
+                                    home_xg=round(float(h_ontarget * 0.32 + h_score * 0.65), 2),
+                                    away_xg=round(float(a_ontarget * 0.32 + a_score * 0.65), 2),
+                                    home_corners=int(h_s_dict.get("wonCorners") or 5),
+                                    away_corners=int(a_s_dict.get("wonCorners") or 4),
+                                    home_fouls=int(h_s_dict.get("foulsCommitted") or 11),
+                                    away_fouls=int(a_s_dict.get("foulsCommitted") or 12),
+                                    home_yellow_cards=int(h_s_dict.get("yellowCards") or 1),
+                                    away_yellow_cards=int(a_s_dict.get("yellowCards") or 1),
+                                    home_red_cards=int(h_s_dict.get("redCards") or 0),
+                                    away_red_cards=int(a_s_dict.get("redCards") or 0),
+                                    home_attacks=h_attacks,
+                                    away_attacks=a_attacks,
+                                    home_dangerous_attacks=h_dang_attacks,
+                                    away_dangerous_attacks=a_dang_attacks,
+                                    home_offsides=int(h_s_dict.get("offsides") or 1),
+                                    away_offsides=int(a_s_dict.get("offsides") or 1),
+                                )
 
                             k_time_str = comp.get("date", datetime.utcnow().isoformat())
                             try:
