@@ -116,7 +116,7 @@ export const MarketAIChatModal: React.FC<MarketAIChatModalProps> = ({
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
       <div
         className={`${
           isExpanded

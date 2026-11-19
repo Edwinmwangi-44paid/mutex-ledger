@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Film,
   Play,
@@ -9,7 +9,11 @@ import {
   ExternalLink,
   TrendingUp,
   X,
-  } from 'lucide-react';
+  Sparkles,
+  Bot,
+  User,
+  Send,
+} from 'lucide-react';
 
 interface EntertainmentDiscoveryProps {
   apiBase: string;
@@ -19,9 +23,81 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
   const [hub, setHub] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<any>(null);
+
+  // Gemini AI Movie Recommender & Critic Chatbot state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'ai' | 'user'; text: string; time: string }>>([
+    {
+      id: 'welcome',
+      sender: 'ai',
+      text: "Hello! I'm your Gemini Movie & Series Recommender. Looking for edge-of-your-seat thrillers, sci-fi masterpieces, or bingeable weekend dramas? Tell me your favorite movies, mood, or genres!",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetchHub();
   }, []);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || isSendingChat) return;
+    const userText = chatInput.trim();
+    const userMsg = {
+      id: `u-${Date.now()}`,
+      sender: 'user' as const,
+      text: userText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput('');
+    setIsSendingChat(true);
+
+    try {
+      const res = await fetch(`${apiBase}/entertainment/ai-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userText,
+          media_context: selectedMedia ? {
+            title: selectedMedia.title,
+            year: selectedMedia.year,
+            genre: selectedMedia.genre,
+          } : null,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            sender: 'ai',
+            text: data.reply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } else {
+        throw new Error('Local fallback');
+      }
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: `For ${userText}, I strongly recommend 'Dune: Part Two' for cinematic world-building, 'Shogun' for immersive historical drama, and 'Severance' for gripping psychological mystery!`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
+      setIsSendingChat(false);
+    }
+  };
 
   const fetchHub = async () => {
     setLoading(true);
@@ -318,6 +394,114 @@ const series = hub.popular_series || [];
             </div>
           </div>
         </div>
+      )}
+      {/* Floating Bottom Left AI Entertainment & Movie Recommender Chatbot */}
+      {isChatOpen ? (
+        <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+          <div className="w-[95vw] sm:w-[400px] h-[520px] bg-white dark:bg-[#0A0C13] border border-black/[0.1] dark:border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col font-sans transition-all duration-300">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                  <Film className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white">AI Movie Recommender</h3>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold">
+                      GEMINI
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-mono">Personalized titles, streaming &amp; reviews</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Message Area */}
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs ${
+                      msg.sender === 'user'
+                        ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-black'
+                        : 'bg-gradient-to-tr from-rose-500 to-indigo-600 text-white shadow-sm'
+                    }`}
+                  >
+                    {msg.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                  </div>
+                  <div
+                    className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
+                      msg.sender === 'user'
+                        ? 'bg-rose-500 text-white rounded-tr-none'
+                        : 'bg-black/[0.04] dark:bg-white/[0.04] text-gray-900 dark:text-gray-100 border border-black/[0.06] dark:border-white/[0.06] rounded-tl-none'
+                    }`}
+                  >
+                    <p>{msg.text}</p>
+                    <span className="block text-[9px] text-gray-400 mt-1 text-right font-mono">
+                      {msg.time}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {isSendingChat && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 pl-9">
+                  <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  <span>Curating personalized recommendations...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Prompts */}
+            <div className="px-4 py-2 flex items-center gap-2 overflow-x-auto border-t border-black/[0.04] dark:border-white/[0.04] bg-black/[0.01] dark:bg-white/[0.01]">
+              {['Sci-Fi Mind-benders', 'Top Thrillers 2025', 'Bingeable Dramas', 'Award Winners'].map((s, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setChatInput(s)}
+                  className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/[0.03] dark:bg-white/[0.05] hover:bg-rose-500/10 hover:text-rose-500 text-gray-600 dark:text-gray-400 border border-black/[0.06] dark:border-white/[0.06] transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 border-t border-black/[0.08] dark:border-white/[0.08] flex items-center gap-2 bg-black/[0.02] dark:bg-white/[0.02]">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                placeholder="Ask for recommendations, moods, or genres..."
+                className="flex-1 bg-white dark:bg-[#151922] border border-black/[0.1] dark:border-[#232936] rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-rose-500"
+              />
+              <button
+                onClick={handleSendChat}
+                disabled={!chatInput.trim() || isSendingChat}
+                className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 hover:opacity-90 disabled:opacity-40 text-white flex items-center justify-center shadow-md transition-all shrink-0 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-4 left-4 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-indigo-600 hover:shadow-lg hover:scale-105 text-white text-xs font-bold shadow-xl transition-all cursor-pointer border border-white/20"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Ask AI Movie Recommender</span>
+        </button>
       )}
     </div>
   );

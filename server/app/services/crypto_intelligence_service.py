@@ -774,19 +774,37 @@ class CryptoIntelligenceService:
         }
 
     @classmethod
-    def get_ai_chat_response(cls, coin_id: str, message: str) -> Dict[str, Any]:
+    async def get_ai_chat_response(cls, coin_id: str, message: str) -> Dict[str, Any]:
         """
         Conversational assistant providing instant intelligent technical & market breakdown
-        answering user questions about a specific cryptocurrency, stock, or forex pair.
+        answering user questions about a specific cryptocurrency, stock, or forex pair using live Gemini AI.
         """
         insight = cls.generate_ai_market_insight(coin_id)
-        msg_lower = message.lower()
         symbol = insight["symbol"]
         name = insight["name"]
         price = insight["price"]
         supp = insight["support_levels"][0]
         res = insight["resistance_levels"][0]
 
+        from app.services.gemini_ai_service import GeminiAIService
+        try:
+            gemini_reply = await GeminiAIService.chat_with_trading_ai(
+                symbol=symbol,
+                name=name,
+                user_message=message,
+                market_context={"price": price, "signal": insight.get("signal", "WATCH")},
+            )
+            if gemini_reply:
+                return {
+                    "asset_id": coin_id,
+                    "symbol": symbol,
+                    "reply": gemini_reply,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                }
+        except Exception as e:
+            logger.debug(f"Gemini trading chat fallback: {e}")
+
+        msg_lower = message.lower()
         if any(w in msg_lower for w in ["buy", "sell", "entry", "enter", "long", "short"]):
             reply = (
                 f"**Strategic Entry & Trade Setup for {name} ({symbol})**:\n\n"

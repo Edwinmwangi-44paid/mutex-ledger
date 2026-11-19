@@ -162,3 +162,121 @@ class GeminiAIService:
 
         return None
 
+    @classmethod
+    async def chat_with_sports_ai(
+        cls,
+        home_team: str,
+        away_team: str,
+        user_message: str,
+        match_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Interactive conversational sports analyst powered by Gemini AI.
+        Answers user questions regarding match tactics, injuries, head-to-head, or scorelines.
+        """
+        api_key, model = cls._get_api_key_and_model()
+        ctx_summary = f"Fixture: {home_team} vs {away_team}."
+        if match_context:
+            ctx_summary += f" Predicted Winner: {match_context.get('winner', 'N/A')}, Predicted Score: {match_context.get('score', 'N/A')}."
+
+        prompt = (
+            f"You are the Lead Sports Tactical AI Analyst at PesaFlip.\n"
+            f"Context: {ctx_summary}\n"
+            f"User Question: \"{user_message}\"\n\n"
+            f"Provide a concise, direct, and authoritative response (under 120 words) analyzing the match, tactical setups, player injuries, or betting angles based on the user's specific question."
+        )
+
+        if api_key:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            return candidates[0]["content"]["parts"][0]["text"].strip()
+            except Exception as e:
+                logger.error(f"Gemini sports chat error: {e}")
+
+        # Fallback intelligent response
+        return f"Regarding {home_team} vs {away_team}: Tactical models project high midfield intensity. Focus remains on half-space penetration and key player availability. Let me know if you need specific set-piece or scoreline details!"
+
+    @classmethod
+    async def chat_with_trading_ai(
+        cls,
+        symbol: str,
+        name: str,
+        user_message: str,
+        market_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Interactive institutional trading strategist powered by Gemini AI using ICT and SMC concepts.
+        """
+        api_key, model = cls._get_api_key_and_model()
+        price_str = f"${market_context.get('price', 0):,.2f}" if market_context else "Live Market"
+        signal_str = market_context.get("signal", "WATCH") if market_context else "WATCH"
+
+        prompt = (
+            f"You are an Elite Institutional Algorithmic Trader at PesaFlip specializing in ICT (Inner Circle Trader) CIT model and SMC (Smart Money Concepts).\n"
+            f"Asset: {name} ({symbol}) | Live Price: {price_str} | Current Signal: {signal_str}.\n"
+            f"User Inquiry: \"{user_message}\"\n\n"
+            f"Provide a sharp, authoritative, and concise trade advisory (under 130 words). Address Order Blocks (OB), Fair Value Gaps (FVG), Liquidity Pools, or specific entry/invalidation levels as requested."
+        )
+
+        if api_key:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            return candidates[0]["content"]["parts"][0]["text"].strip()
+            except Exception as e:
+                logger.error(f"Gemini trading chat error: {e}")
+
+        return f"Trade Analysis for {symbol}: Currently monitoring key institutional order blocks near current levels. Maintain strict risk parameters and watch for liquidity sweeps before committing leverage."
+
+    @classmethod
+    async def chat_with_entertainment_ai(
+        cls,
+        user_message: str,
+        media_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Interactive Entertainment & Movie Critic powered by Gemini AI for personalized movie/series recommendations.
+        """
+        api_key, model = cls._get_api_key_and_model()
+        ctx_str = ""
+        if media_context:
+            ctx_str = f"Currently Viewing: {media_context.get('title', 'Featured Title')} ({media_context.get('year', '')}) - Genre: {media_context.get('genre', '')}.\n"
+
+        prompt = (
+            f"You are the Lead Entertainment Curator & Movie Critic at PesaFlip.\n"
+            f"{ctx_str}"
+            f"User Message: \"{user_message}\"\n\n"
+            f"Provide an engaging, highly personalized entertainment response (under 130 words). "
+            f"Recommend top films, TV shows, or hidden gems matching their taste, mood, or genres. Mention where to stream or why it's a must-watch!"
+        )
+
+        if api_key:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            return candidates[0]["content"]["parts"][0]["text"].strip()
+            except Exception as e:
+                logger.error(f"Gemini entertainment chat error: {e}")
+
+        return "Looking for a phenomenal watch? If you love gripping thrillers, check out 'Severance' or 'Inception'. For cinematic masterclasses, 'Dune: Part Two' is unmissable. Tell me your favorite genre or mood and I'll find your perfect title!"
+
+

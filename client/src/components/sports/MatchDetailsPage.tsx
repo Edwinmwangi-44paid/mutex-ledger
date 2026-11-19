@@ -129,36 +129,63 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
     setIsSendingChat(true);
 
     try {
-      // Simulate/call AI tactical chat assistant
-      setTimeout(() => {
-        const hTeam = data.fixture.home_team.name;
-        const aTeam = data.fixture.away_team.name;
-        const gemini = data.ai_analysis?.gemini_analysis;
-        let reply = '';
-        const lowerQ = userText.toLowerCase();
+      const hTeam = data.fixture.home_team.name;
+      const aTeam = data.fixture.away_team.name;
+      const res = await fetch(`${apiBase}/sports/fixtures/${id}/ai-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userText,
+          home_team: hTeam,
+          away_team: aTeam,
+          match_context: {
+            winner: data.ai_analysis?.most_likely_outcome,
+            score: data.ai_analysis?.predicted_score,
+          },
+        }),
+      });
 
-        if (lowerQ.includes('injur') || lowerQ.includes('miss') || lowerQ.includes('fit')) {
-          reply = gemini?.injury_updates || `For ${hTeam} vs ${aTeam}, key starters are undergoing fitness assessments. Squad rotation is expected in midfield with high bench depth factor.`;
-        } else if (lowerQ.includes('score') || lowerQ.includes('goal') || lowerQ.includes('btts')) {
-          reply = `Our Poisson matrix projects ${data.ai_analysis?.predicted_score || '2-1'} with BTTS at ${data.ai_analysis?.btts_probability || 64}%. ${gemini?.squad_strength || 'Attacking conversion rates remain strong at home.'}`;
-        } else if (lowerQ.includes('head to head') || lowerQ.includes('h2h') || lowerQ.includes('history')) {
-          reply = `In the last 6 encounters, ${hTeam} has won ${data.h2h?.home_wins || 3} times, ${aTeam} has won ${data.h2h?.away_wins || 1} times with ${data.h2h?.draws || 2} draws.`;
-        } else {
-          reply = gemini?.tactical_verdict || `Tactical breakdown for ${hTeam} vs ${aTeam}: Focus on half-space penetration and counter-pressing triggers. Our model projects ${data.ai_analysis?.most_likely_outcome || hTeam} as the highest probability selection.`;
-        }
-
+      if (res.ok) {
+        const chatData = await res.json();
         setChatMessages((prev) => [
           ...prev,
           {
             id: `ai-${Date.now()}`,
             sender: 'ai',
-            text: reply,
+            text: chatData.reply,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
-        setIsSendingChat(false);
-      }, 700);
+      } else {
+        throw new Error('Fallback to local synthesis');
+      }
     } catch {
+      const hTeam = data.fixture.home_team.name;
+      const aTeam = data.fixture.away_team.name;
+      const gemini = data.ai_analysis?.gemini_analysis;
+      let reply = '';
+      const lowerQ = userText.toLowerCase();
+
+      if (lowerQ.includes('injur') || lowerQ.includes('miss') || lowerQ.includes('fit')) {
+        reply = gemini?.injury_updates || `For ${hTeam} vs ${aTeam}, key starters are undergoing fitness assessments. Squad rotation is expected in midfield with high bench depth factor.`;
+      } else if (lowerQ.includes('score') || lowerQ.includes('goal') || lowerQ.includes('btts')) {
+        reply = `Our Poisson matrix projects ${data.ai_analysis?.predicted_score || '2-1'} with BTTS at ${data.ai_analysis?.btts_probability || 64}%. ${gemini?.squad_strength || 'Attacking conversion rates remain strong at home.'}`;
+      } else if (lowerQ.includes('head to head') || lowerQ.includes('h2h') || lowerQ.includes('history')) {
+        reply = `In the last 6 encounters, ${hTeam} has won ${data.h2h?.home_wins || 3} times, ${aTeam} has won ${data.h2h?.away_wins || 1} times with ${data.h2h?.draws || 2} draws.`;
+      } else {
+        reply = gemini?.tactical_verdict || `Tactical breakdown for ${hTeam} vs ${aTeam}: Focus on half-space penetration and counter-pressing triggers. Our model projects ${data.ai_analysis?.most_likely_outcome || hTeam} as the highest probability selection.`;
+      }
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: reply,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
       setIsSendingChat(false);
     }
   };
@@ -784,24 +811,29 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
         </div>
       )}
 
-      {/* Floating Interactive AI Chatbot Modal for Match Inquiries */}
+      {/* Floating Interactive AI Chatbot Modal for Match Inquiries (Bottom Left) */}
       {isChatOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-[#0E121A] border border-black/[0.1] dark:border-[#232936] rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[520px]">
+        <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+          <div className="w-[95vw] sm:w-[400px] h-[520px] bg-white dark:bg-[#0A0C13] border border-black/[0.1] dark:border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col font-sans transition-all duration-300">
             {/* Header */}
-            <div className="px-5 py-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
+            <div className="px-4 py-3 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#3E4FFF] flex items-center justify-center text-white shadow-md">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">AI Sports Analyst</h3>
-                  <p className="text-[10px] text-gray-500 font-mono">{fixture.home_team.name} vs {fixture.away_team.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white">AI Sports Analyst</h3>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                      GEMINI
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-mono truncate max-w-[220px]">{fixture.home_team.name} vs {fixture.away_team.name}</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsChatOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

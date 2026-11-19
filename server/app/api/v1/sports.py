@@ -822,3 +822,24 @@ async def run_deep_ai_analysis(fixture_id: str, session: AsyncSession = Depends(
 
     return pkg
 
+
+@router.post("/fixtures/{fixture_id}/ai-chat")
+async def chat_with_fixture_sports_ai(fixture_id: str, payload: dict):
+    """Interactive AI chat endpoint for a specific fixture powered by Gemini AI."""
+    msg = payload.get("message", "")
+    h_team = payload.get("home_team", "Home Team")
+    a_team = payload.get("away_team", "Away Team")
+    match_ctx = payload.get("match_context", {})
+
+    reply = await GeminiAIService.chat_with_sports_ai(
+        home_team=h_team,
+        away_team=a_team,
+        user_message=msg,
+        match_context=match_ctx,
+    )
+    return {
+        "reply": reply,
+        "message": msg,
+        "fixture_id": fixture_id,
+    }
+
