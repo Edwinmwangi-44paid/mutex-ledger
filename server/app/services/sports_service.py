@@ -758,13 +758,17 @@ class SportsDataService:
 
                     # Process Upcoming Fixtures
                     for u in payload.get("upcoming_fixtures", []):
-                        dt_iso = u.get("datetime", u.get("date"))
-                        if dt_iso and " " in dt_iso:
-                            dt_iso = dt_iso.replace(" ", "T") + "Z"
-                        elif dt_iso and "T" not in dt_iso:
-                            dt_iso = f"{dt_iso}T19:00:00Z"
+                        # SportAPI provides datetime in UK time / UTC (e.g. "2026-11-21 13:30:00").
+                        # Convert to explicit UTC ISO timestamp (e.g. "2026-11-21T13:30:00Z") so browser converts accurately to EAT (UTC+3)
+                        dt_raw = u.get("datetime") or u.get("date") or ""
+                        if " " in dt_raw:
+                            dt_iso = dt_raw.replace(" ", "T") + "Z"
+                        elif "T" in dt_raw and not dt_raw.endswith("Z"):
+                            dt_iso = dt_raw + "Z"
+                        elif dt_raw:
+                            dt_iso = f"{dt_raw}T16:00:00Z"
                         else:
-                            dt_iso = (datetime.utcnow() + timedelta(days=1)).isoformat()
+                            dt_iso = (datetime.utcnow() + timedelta(days=1)).isoformat() + "Z"
 
                         h_name = u.get("home_team", "Home Team")
                         a_name = u.get("away_team", "Away Team")

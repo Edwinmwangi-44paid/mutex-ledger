@@ -126,6 +126,7 @@ class AIDeepAnalysisResponse(BaseModel):
     confidence_level: str
     disclaimer: str
     engine_version: str
+    gemini_analysis: Optional[Dict[str, Any]] = None
 
 
 class LiveTickerItem(BaseModel):

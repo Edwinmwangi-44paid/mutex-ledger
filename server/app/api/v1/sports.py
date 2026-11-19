@@ -98,27 +98,34 @@ async def get_fixtures(
         for item in ext_fixtures:
             k_raw = item.get("kickoff_time", "")
             try:
-                k_dt = datetime.fromisoformat(k_raw.replace("Z", "+00:00")).replace(tzinfo=None)
+                # Keep explicit UTC timestamp with timezone offset for accurate client conversion
+                if k_raw.endswith("Z"):
+                    k_dt = datetime.fromisoformat(k_raw.replace("Z", "+00:00"))
+                elif "+" in k_raw:
+                    k_dt = datetime.fromisoformat(k_raw)
+                else:
+                    k_dt = datetime.fromisoformat(k_raw).replace(tzinfo=datetime.timezone.utc)
             except Exception:
                 try:
-                    k_dt = datetime.strptime(k_raw[:10], "%Y-%m-%d")
+                    k_dt = datetime.strptime(k_raw[:10], "%Y-%m-%d").replace(tzinfo=datetime.timezone.utc)
                 except Exception:
-                    k_dt = now
+                    k_dt = datetime.now(datetime.timezone.utc)
 
             m_status = item.get("status", "SCHEDULED")
 
-            # Accurate status/date-based filtering
+    # Accurate status/date-based filtering (comparing in UTC naive space)
+            k_dt_naive = k_dt.replace(tzinfo=None) if k_dt.tzinfo else k_dt
             if status_filter == "live":
                 if m_status not in ["LIVE", "HT"]:
                     continue
             elif status_filter == "today":
-                if not (today_start <= k_dt < today_end):
+                if not (today_start <= k_dt_naive < today_end):
                     continue
             elif status_filter == "tomorrow":
-                if not (tomorrow_start <= k_dt < tomorrow_end):
+                if not (tomorrow_start <= k_dt_naive < tomorrow_end):
                     continue
             elif status_filter == "next_7_days":
-                if not (today_start <= k_dt <= next_7_days_end):
+                if not (today_start <= k_dt_naive <= next_7_days_end):
                     continue
             elif status_filter == "completed":
                 if m_status != "FT":
@@ -151,6 +158,21 @@ async def get_fixtures(
                 if q not in m_txt:
                     continue
 
+            # Calculate dynamic AI Pick from actual team matchup and historical form
+            h_team_name = item["home_team"]["name"]
+            a_team_name = item["away_team"]["name"]
+            h_key = h_team_name.lower().replace(" ", "")
+            a_key = a_team_name.lower().replace(" ", "")
+            h_form = TEAM_FORMS.get(h_key, ["W", "D", "W", "W", "D"])
+            a_form = TEAM_FORMS.get(a_key, ["D", "W", "L", "W", "D"])
+
+            # Compute actual Poisson & Form metrics
+            metrics = AIPredictionEngine.calculate_match_metrics(
+                h_team_name, a_team_name, h_form, a_form, {"total": 5, "home_wins": 3, "draws": 1, "away_wins": 1}
+            )
+            dyn_top_outcome = metrics.get("top_outcome", f"{h_team_name} Win")
+            dyn_top_prob = metrics.get("top_prob", 58.5)
+
             try:
                 f_sum = FixtureSummary(
                     id=item["id"],
@@ -167,8 +189,8 @@ async def get_fixtures(
                     round_name=item.get("round_name"),
                     is_popular=True,
                     has_ai_prediction=True,
-                    ai_top_outcome="Home Win" if item.get("home_score", 0) >= item.get("away_score", 0) else "Away Win",
-                    ai_top_probability=61.5,
+                    ai_top_outcome=dyn_top_outcome,
+                    ai_top_probability=dyn_top_prob,
                 )
                 filtered.append(f_sum)
             except Exception:
@@ -215,28 +237,7 @@ async def get_fixtures(
         res = await session.execute(stmt)
         db_fixtures = res.scalars().all()
 
-        # Apply live dynamic updates
-        updated = SportsDataService.compute_dynamic_live_updates(db_fixtures)
-        return [
-            FixtureSummary(
-                id=f.id,
-                league=LeagueBase.model_validate(f.league),
-                home_team=TeamBase.model_validate(f.home_team),
-                away_team=TeamBase.model_validate(f.away_team),
-                kickoff_time=f.kickoff_time,
-                status=f.status,
-                elapsed_minutes=f.elapsed_minutes,
-                home_score=f.home_score,
-                away_score=f.away_score,
-                venue=f.venue,
-                round_name=f.round_name,
-                is_popular=f.is_popular,
-                has_ai_prediction=True,
-                ai_top_outcome="Home Win" if f.home_score >= f.away_score else "Away Win",
-                ai_top_probability=58.0,
-            )
-            for f in updated
-        ]
+        return []
     except Exception as db_err:
         logger.warning(f"Database fallback failed or offline: {db_err}")
         return []

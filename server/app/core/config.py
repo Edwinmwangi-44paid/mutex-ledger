@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # Finnhub Market Data API Integration
     FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0")
 
+    # Gemini AI Integration (read strictly from environment)
+    GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY", None)
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+
     # Supabase Integration (read strictly from environment to adhere to push protection)
     SUPABASE_URL: str | None = os.getenv("SUPABASE_URL", None)
     SUPABASE_PUBLISHABLE_KEY: str | None = os.getenv("SUPABASE_PUBLISHABLE_KEY", None)

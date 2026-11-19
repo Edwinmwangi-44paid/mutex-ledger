@@ -160,13 +160,25 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
   };
 
   const formatKickoff = (isoString: string) => {
+    // EAT (UTC+2) formatted conversion
     const d = new Date(isoString);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const utcMs = d.getTime();
+    const eatDate = new Date(utcMs + 2 * 60 * 60 * 1000);
+    const hours = String(eatDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(eatDate.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes} EAT`;
   };
 
   const formatMatchDate = (isoString: string) => {
     const d = new Date(isoString);
-    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    const utcMs = d.getTime();
+    const eatDate = new Date(utcMs + 2 * 60 * 60 * 1000);
+    return eatDate.toLocaleDateString([], {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    });
   };
 
   return (
@@ -351,7 +363,7 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ apiBase }) => {
           <span className="w-1.5 h-1.5 rounded-full bg-[#3E4FFF] animate-pulse" />
           <span>Live telemetry stream active ({fixtures.length} matches)</span>
         </div>
-        <span>Synced: {lastRefreshedAt.toLocaleTimeString()}</span>
+        <span>Synced: {new Date(lastRefreshedAt.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(11, 16)} EAT</span>
       </div>
 
       {/* Matches Grid */}

@@ -125,7 +125,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
 
         <div className="flex items-center gap-3">
           <div className="text-[11px] text-gray-500 dark:text-gray-400 hidden sm:block font-mono">
-            Synced: {lastRefreshedAt.toLocaleTimeString()}
+            Synced: {new Date(lastRefreshedAt.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(11, 16)} EAT
           </div>
           <button
             onClick={() => fetchMatch(true)}
@@ -195,10 +195,13 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
                     VS
                   </div>
                   <div className="text-xs text-[#3E4FFF] font-bold px-2.5 py-0.5 rounded-full bg-[#3E4FFF]/10 border border-[#3E4FFF]/25 font-mono">
-                    {new Date(fixture.kickoff_time).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {(() => {
+                      const d = new Date(fixture.kickoff_time);
+                      const eatDate = new Date(d.getTime() + 2 * 60 * 60 * 1000);
+                      const hh = String(eatDate.getUTCHours()).padStart(2, '0');
+                      const mm = String(eatDate.getUTCMinutes()).padStart(2, '0');
+                      return `${hh}:${mm} EAT`;
+                    })()}
                   </div>
                 </div>
               ) : (
