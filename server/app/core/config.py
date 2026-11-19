@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # Finnhub Market Data API Integration
     FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0")
 
+    # Supabase Integration (read strictly from environment to adhere to push protection)
+    SUPABASE_URL: str | None = os.getenv("SUPABASE_URL", None)
+    SUPABASE_PUBLISHABLE_KEY: str | None = os.getenv("SUPABASE_PUBLISHABLE_KEY", None)
+    SUPABASE_SECRET_KEY: str | None = os.getenv("SUPABASE_SECRET_KEY", None)
+    SUPABASE_DB_PASSWORD: str | None = os.getenv("SUPABASE_DB_PASSWORD", None)
+
     
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
