@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from app.schemas.sports import PredictionItem, AIDeepAnalysisResponse
 
 
@@ -35,6 +35,8 @@ class AIPredictionEngine:
         away_form: List[str],
         h2h_records: Dict[str, Any],
         league_avg_goals: float = 2.75,
+        home_rating: Optional[int] = None,
+        away_rating: Optional[int] = None,
     ) -> Dict[str, Any]:
         # Form weight: W=3, D=1, L=0
         def form_score(form: List[str]) -> float:
@@ -51,9 +53,14 @@ class AIPredictionEngine:
         h_factor = form_score(home_form)
         a_factor = form_score(away_form)
 
-        # Base expected goals (lambda)
-        lambda_home = max(0.6, (league_avg_goals / 2.0) * (0.8 + 0.4 * h_factor) * 1.15)  # Home advantage
-        lambda_away = max(0.4, (league_avg_goals / 2.0) * (0.8 + 0.4 * a_factor) * 0.90)
+        # Baseline squad strength multiplier (ratings typically 65 to 94)
+        h_rat = home_rating if home_rating is not None else 78
+        a_rat = away_rating if away_rating is not None else 78
+        rating_diff = (h_rat - a_rat) / 10.0  # e.g. Man City (93) vs Fulham (76) = +1.7
+
+        # Base expected goals (lambda) factoring in power rating difference
+        lambda_home = max(0.4, (league_avg_goals / 2.0) * (0.8 + 0.4 * h_factor + 0.25 * rating_diff) * 1.15)
+        lambda_away = max(0.2, (league_avg_goals / 2.0) * (0.8 + 0.4 * a_factor - 0.25 * rating_diff) * 0.90)
 
         # Factor in H2H edge
         tot_h2h = h2h_records.get("total", 0)

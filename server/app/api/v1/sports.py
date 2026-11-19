@@ -27,23 +27,65 @@ from app.services.sports_service import SportsDataService
 
 router = APIRouter(prefix="/sports", tags=["Sports Match Centre"])
 
+# Expanded Comprehensive Team Forms & Power Strength Index
+TEAM_RATINGS: dict[str, int] = {
+    # Premier League
+    "manchestercity": 93, "mancity": 93, "arsenal": 90, "liverpool": 90, "chelsea": 85,
+    "astonvilla": 83, "tottenham": 82, "tottenhamhotspur": 82, "manchesterunited": 81, "manutd": 81,
+    "newcastle": 80, "newcastleunited": 80, "brighton": 78, "fulham": 76,
+    "afcbournemouth": 75, "bournemouth": 75, "brentford": 75, "crystalpalace": 74,
+    "nottinghamforest": 74, "everton": 73, "westham": 73, "westhamunited": 73,
+    "wolverhampton": 72, "wolves": 72, "leedsunited": 71, "sunderland": 70, "coventrycity": 68,
+    # La Liga
+    "realmadrid": 93, "barcelona": 91, "fcbarcelona": 91, "atletico": 86, "atleticomadrid": 86,
+    "athleticclub": 82, "athleticbilbao": 82, "realsociedad": 81, "villarreal": 80, "sevilla": 78,
+    "realbetis": 78, "girona": 78, "celtavigo": 74, "espanyol": 72, "getafe": 72,
+    # Bundesliga
+    "bayern": 92, "bayernmunich": 92, "leverkusen": 88, "bayerleverkusen": 88,
+    "dortmund": 84, "borussiadortmund": 84, "rbleipzig": 83, "eintrachtfrankfurt": 80,
+    "stuttgart": 80, "fccologne": 72, "koln": 72,
+    # Serie A
+    "inter": 88, "intermilan": 88, "juventus": 85, "milan": 84, "acmilan": 84,
+    "atalanta": 84, "napoli": 85, "roma": 81, "lazio": 80, "como": 72, "cagliari": 70,
+    # Ligue 1 & Others
+    "psg": 90, "parissaintgermain": 90, "monaco": 82, "asmonaco": 82, "marseille": 80,
+    "lyon": 79, "lille": 79, "gormahia": 68, "afcleopards": 66, "tusker": 65, "bandari": 64,
+}
+
 # Realistic form cache dictionary
 TEAM_FORMS = {
     "arsenal": ["W", "W", "D", "W", "W"],
     "mancity": ["W", "W", "W", "D", "W"],
+    "manchestercity": ["W", "W", "W", "D", "W"],
     "liverpool": ["W", "D", "W", "W", "L"],
     "chelsea": ["D", "W", "L", "W", "D"],
     "manutd": ["L", "W", "D", "L", "W"],
+    "manchesterunited": ["L", "W", "D", "L", "W"],
     "tottenham": ["W", "L", "W", "D", "L"],
+    "astonvilla": ["W", "W", "L", "W", "D"],
+    "fulham": ["L", "D", "W", "L", "D"],
+    "sunderland": ["D", "L", "D", "W", "L"],
+    "leedsunited": ["L", "L", "D", "W", "L"],
+    "coventrycity": ["D", "L", "L", "D", "W"],
+    "crystalpalace": ["D", "W", "L", "D", "D"],
+    "afcbournemouth": ["W", "L", "D", "W", "L"],
+    "nottinghamforest": ["D", "W", "L", "D", "W"],
     "realmadrid": ["W", "W", "W", "W", "D"],
     "barcelona": ["W", "W", "W", "L", "W"],
+    "fcbarcelona": ["W", "W", "W", "L", "W"],
     "atletico": ["D", "W", "W", "L", "W"],
+    "athleticclub": ["W", "W", "D", "W", "L"],
+    "espanyol": ["L", "D", "L", "L", "D"],
     "bayern": ["W", "W", "W", "D", "W"],
+    "bayernmunich": ["W", "W", "W", "D", "W"],
     "leverkusen": ["W", "D", "W", "W", "D"],
     "dortmund": ["W", "L", "D", "W", "W"],
+    "fccologne": ["L", "L", "D", "W", "L"],
     "inter": ["W", "W", "W", "W", "W"],
     "juventus": ["D", "W", "D", "W", "L"],
     "milan": ["L", "W", "W", "D", "W"],
+    "como": ["D", "L", "D", "W", "L"],
+    "cagliari": ["L", "D", "L", "D", "L"],
     "psg": ["W", "W", "W", "W", "D"],
     "monaco": ["W", "D", "L", "W", "W"],
     "gormahia": ["W", "W", "W", "D", "W"],
@@ -161,14 +203,22 @@ async def get_fixtures(
             # Calculate dynamic AI Pick from actual team matchup and historical form
             h_team_name = item["home_team"]["name"]
             a_team_name = item["away_team"]["name"]
-            h_key = h_team_name.lower().replace(" ", "")
-            a_key = a_team_name.lower().replace(" ", "")
+            h_key = h_team_name.lower().replace(" ", "").replace("-", "")
+            a_key = a_team_name.lower().replace(" ", "").replace("-", "")
             h_form = TEAM_FORMS.get(h_key, ["W", "D", "W", "W", "D"])
             a_form = TEAM_FORMS.get(a_key, ["D", "W", "L", "W", "D"])
+            h_rat = TEAM_RATINGS.get(h_key, 78)
+            a_rat = TEAM_RATINGS.get(a_key, 78)
 
-            # Compute actual Poisson & Form metrics
+            # Compute actual Poisson, Form & Rating metrics
             metrics = AIPredictionEngine.calculate_match_metrics(
-                h_team_name, a_team_name, h_form, a_form, {"total": 5, "home_wins": 3, "draws": 1, "away_wins": 1}
+                h_team_name,
+                a_team_name,
+                h_form,
+                a_form,
+                {"total": 5, "home_wins": 3, "draws": 1, "away_wins": 1},
+                home_rating=h_rat,
+                away_rating=a_rat,
             )
             dyn_top_outcome = metrics.get("top_outcome", f"{h_team_name} Win")
             dyn_top_prob = metrics.get("top_prob", 58.5)
