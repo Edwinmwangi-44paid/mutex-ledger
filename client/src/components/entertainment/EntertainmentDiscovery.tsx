@@ -395,9 +395,9 @@ const series = hub.popular_series || [];
           </div>
         </div>
       )}
-      {/* Floating Bottom Left AI Entertainment & Movie Recommender Chatbot */}
+      {/* Floating Bottom Right AI Entertainment & Movie Recommender Chatbot */}
       {isChatOpen ? (
-        <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
           <div className="w-[95vw] sm:w-[400px] h-[520px] bg-white dark:bg-[#0A0C13] border border-black/[0.1] dark:border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col font-sans transition-all duration-300">
             {/* Header */}
             <div className="px-4 py-3 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
@@ -497,7 +497,7 @@ const series = hub.popular_series || [];
       ) : (
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-4 left-4 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-indigo-600 hover:shadow-lg hover:scale-105 text-white text-xs font-bold shadow-xl transition-all cursor-pointer border border-white/20"
+          className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-indigo-600 hover:shadow-lg hover:scale-105 text-white text-xs font-bold shadow-xl transition-all cursor-pointer border border-white/20"
         >
           <Sparkles className="w-4 h-4" />
           <span>Ask AI Movie Recommender</span>

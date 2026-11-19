@@ -811,9 +811,9 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
         </div>
       )}
 
-      {/* Floating Interactive AI Chatbot Modal for Match Inquiries (Bottom Left) */}
+      {/* Floating Interactive AI Chatbot Modal for Match Inquiries (Bottom Right) */}
       {isChatOpen && (
-        <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
           <div className="w-[95vw] sm:w-[400px] h-[520px] bg-white dark:bg-[#0A0C13] border border-black/[0.1] dark:border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col font-sans transition-all duration-300">
             {/* Header */}
             <div className="px-4 py-3 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
