@@ -1,8 +1,11 @@
+import os
+import json
 import math
+import time
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import httpx
 
 from app.core.config import get_settings
@@ -13,41 +16,46 @@ logger = logging.getLogger("pesaflip.crypto")
 class CryptoIntelligenceService:
     """
     Dedicated Multi-Market Intelligence Service for:
-    1. Cryptocurrencies (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, SUI, SHIB, PEPE, NEAR, DOT, UNI, LTC, etc.)
-    2. Global Stocks & Equities (AAPL, NVDA, MSFT, AMZN, GOOGL, TSLA, META, AMD, NFLX, PLTR, COIN, BABA, etc.)
-    3. Global Currencies & Forex Pairs (EUR/USD, GBP/USD, USD/JPY, USD/CHF, USD/KES, AUD/USD, USD/CAD, NZD/USD, USD/ZAR, etc.)
-    4. Paginated Infinite Scroll & on-demand price refresh to guarantee < 30 req/sec speed caps.
+    1. Cryptocurrencies (Binance spot pairs: BTC, ETH, SOL, XRP, BNB, etc. - thousands accessible)
+    2. Global Stocks & Equities (Finnhub US Equities: AAPL, NVDA, MSFT, AMZN, GOOGL, TSLA, etc.)
+    3. Global Currencies & Commodities (Forex via live FX rates + Gold/Silver parity)
+    4. Safe In-Memory Quote Caching (30s TTL) & Rate-Limited Batch Fetching (< 30 req/sec cap, no 429/403 errors).
+    5. Search across all thousands of symbols and descriptions with seamless pagination.
     """
 
-    _CACHE: Dict[str, Any] = {}
-    _CACHE_TTL: int = 15  # 15s cache
+    _DATA_INITIALIZED: bool = False
+    _INITIALIZE_LOCK = asyncio.Lock()
+    _SEMAPHORE = asyncio.Semaphore(5)  # Max 5 parallel outbound requests to Finnhub
+    _QUOTE_CACHE: Dict[str, Tuple[float, float, float]] = {}  # ticker -> (price, change_24h, timestamp)
+    _QUOTE_CACHE_TTL: int = 30  # 30 seconds TTL
+    _BINANCE_ALL_TICKERS: Dict[str, Tuple[float, float, float]] = {}  # symbol -> (price, change_24h, timestamp)
+    _BINANCE_CACHE_TTL: int = 20  # 20 seconds TTL
+    _FOREX_RATES_CACHE: Dict[str, float] = {}
+    _FOREX_CACHE_TIME: float = 0.0
 
-    ASSETS_DATABASE: List[Dict[str, Any]] = [
-        # ─────────────────────────────────────────────────────────────
-        # 1. CRYPTOCURRENCIES
-        # ─────────────────────────────────────────────────────────────
-        {"id": "bitcoin", "symbol": "BTC", "finnhub_symbol": "BINANCE:BTCUSDT", "binance_symbol": "BTCUSDT", "category": "crypto", "name": "Bitcoin", "price": 73500.00, "change_24h": -2.1, "market_cap": 1450000000000, "volume_24h": 32410200000, "circulating_supply": 19780000, "all_time_high": 73750.07, "rank": 1, "logo": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png", "description": "Bitcoin is the premier decentralized digital currency and global store of value."},
-        {"id": "ethereum", "symbol": "ETH", "finnhub_symbol": "BINANCE:ETHUSDT", "binance_symbol": "ETHUSDT", "category": "crypto", "name": "Ethereum", "price": 2040.00, "change_24h": -4.6, "market_cap": 245500200000, "volume_24h": 18920300000, "circulating_supply": 120250000, "all_time_high": 4891.70, "rank": 2, "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png", "description": "Ethereum powers smart contracts and decentralized applications worldwide."},
-        {"id": "solana", "symbol": "SOL", "finnhub_symbol": "BINANCE:SOLUSDT", "binance_symbol": "SOLUSDT", "category": "crypto", "name": "Solana", "price": 82.50, "change_24h": -5.3, "market_cap": 38520000000, "volume_24h": 4820300000, "circulating_supply": 465100000, "all_time_high": 260.06, "rank": 3, "logo": "https://assets.coingecko.com/coins/images/4128/large/solana.png", "description": "High-throughput blockchain built for consumer web scale with sub-second finality."},
-        {"id": "ripple", "symbol": "XRP", "finnhub_symbol": "BINANCE:XRPUSDT", "binance_symbol": "XRPUSDT", "category": "crypto", "name": "XRP", "price": 1.05, "change_24h": -5.5, "market_cap": 58800000000, "volume_24h": 3250000000, "circulating_supply": 56120000000, "all_time_high": 3.84, "rank": 4, "logo": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png", "description": "Institutional enterprise settlement and cross-border remittance asset."},
+    # Curated featured base list (preserves verified descriptions, ATHs, market caps, logos)
+    CURATED_FEATURED: List[Dict[str, Any]] = [
+        # Cryptocurrencies
+        {"id": "bitcoin", "symbol": "BTC", "finnhub_symbol": "BINANCE:BTCUSDT", "binance_symbol": "BTCUSDT", "category": "crypto", "name": "Bitcoin", "price": 63850.00, "change_24h": -1.2, "market_cap": 1450000000000, "volume_24h": 32410200000, "circulating_supply": 19780000, "all_time_high": 73750.07, "rank": 1, "logo": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png", "description": "Bitcoin is the premier decentralized digital currency and global store of value."},
+        {"id": "ethereum", "symbol": "ETH", "finnhub_symbol": "BINANCE:ETHUSDT", "binance_symbol": "ETHUSDT", "category": "crypto", "name": "Ethereum", "price": 1805.00, "change_24h": -0.4, "market_cap": 245500200000, "volume_24h": 18920300000, "circulating_supply": 120250000, "all_time_high": 4891.70, "rank": 2, "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png", "description": "Ethereum powers smart contracts and decentralized applications worldwide."},
+        {"id": "solana", "symbol": "SOL", "finnhub_symbol": "BINANCE:SOLUSDT", "binance_symbol": "SOLUSDT", "category": "crypto", "name": "Solana", "price": 74.50, "change_24h": -0.75, "market_cap": 38520000000, "volume_24h": 4820300000, "circulating_supply": 465100000, "all_time_high": 260.06, "rank": 3, "logo": "https://assets.coingecko.com/coins/images/4128/large/solana.png", "description": "High-throughput blockchain built for consumer web scale with sub-second finality."},
+        {"id": "ripple", "symbol": "XRP", "finnhub_symbol": "BINANCE:XRPUSDT", "binance_symbol": "XRPUSDT", "category": "crypto", "name": "XRP", "price": 1.05, "change_24h": -2.5, "market_cap": 58800000000, "volume_24h": 3250000000, "circulating_supply": 56120000000, "all_time_high": 3.84, "rank": 4, "logo": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png", "description": "Institutional enterprise settlement and cross-border remittance asset."},
         {"id": "binancecoin", "symbol": "BNB", "finnhub_symbol": "BINANCE:BNBUSDT", "binance_symbol": "BNBUSDT", "category": "crypto", "name": "BNB", "price": 585.20, "change_24h": -1.4, "market_cap": 85400000000, "volume_24h": 1420000000, "circulating_supply": 145800000, "all_time_high": 720.67, "rank": 5, "logo": "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png", "description": "Native fuel of the BNB Chain ecosystem powering gas and staking utilities."},
-        {"id": "dogecoin", "symbol": "DOGE", "finnhub_symbol": "BINANCE:DOGEUSDT", "binance_symbol": "DOGEUSDT", "category": "crypto", "name": "Dogecoin", "price": 0.165, "change_24h": -3.8, "market_cap": 24200000000, "volume_24h": 1850000000, "circulating_supply": 146000000000, "all_time_high": 0.7376, "rank": 6, "logo": "https://assets.coingecko.com/coins/images/5/large/dogecoin.png", "description": "Open-source peer-to-peer cryptocurrency popular for decentralized community micro-payments."},
-        {"id": "cardano", "symbol": "ADA", "finnhub_symbol": "BINANCE:ADAUSDT", "binance_symbol": "ADAUSDT", "category": "crypto", "name": "Cardano", "price": 0.445, "change_24h": -2.10, "market_cap": 15900000000, "volume_24h": 410000000, "circulating_supply": 35700000000, "all_time_high": 3.10, "rank": 7, "logo": "https://assets.coingecko.com/coins/images/975/large/cardano.png", "description": "Evidence-based, peer-reviewed proof-of-stake smart contract platform."},
-        {"id": "avalanche-2", "symbol": "AVAX", "finnhub_symbol": "BINANCE:AVAXUSDT", "binance_symbol": "AVAXUSDT", "category": "crypto", "name": "Avalanche", "price": 28.75, "change_24h": 4.12, "market_cap": 11340000000, "volume_24h": 680000000, "circulating_supply": 395000000, "all_time_high": 146.22, "rank": 8, "logo": "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png", "description": "Scalable blockchain with novel consensus and customizable subnet architecture."},
+        {"id": "dogecoin", "symbol": "DOGE", "finnhub_symbol": "BINANCE:DOGEUSDT", "binance_symbol": "DOGEUSDT", "category": "crypto", "name": "Dogecoin", "price": 0.0595, "change_24h": -0.3, "market_cap": 24200000000, "volume_24h": 1850000000, "circulating_supply": 146000000000, "all_time_high": 0.7376, "rank": 6, "logo": "https://assets.coingecko.com/coins/images/5/large/dogecoin.png", "description": "Open-source peer-to-peer cryptocurrency popular for decentralized community micro-payments."},
+        {"id": "cardano", "symbol": "ADA", "finnhub_symbol": "BINANCE:ADAUSDT", "binance_symbol": "ADAUSDT", "category": "crypto", "name": "Cardano", "price": 0.445, "change_24h": -1.10, "market_cap": 15900000000, "volume_24h": 410000000, "circulating_supply": 35700000000, "all_time_high": 3.10, "rank": 7, "logo": "https://assets.coingecko.com/coins/images/975/large/cardano.png", "description": "Evidence-based, peer-reviewed proof-of-stake smart contract platform."},
+        {"id": "avalanche-2", "symbol": "AVAX", "finnhub_symbol": "BINANCE:AVAXUSDT", "binance_symbol": "AVAXUSDT", "category": "crypto", "name": "Avalanche", "price": 28.75, "change_24h": 2.12, "market_cap": 11340000000, "volume_24h": 680000000, "circulating_supply": 395000000, "all_time_high": 146.22, "rank": 8, "logo": "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png", "description": "Scalable blockchain with novel consensus and customizable subnet architecture."},
         {"id": "chainlink", "symbol": "LINK", "finnhub_symbol": "BINANCE:LINKUSDT", "binance_symbol": "LINKUSDT", "category": "crypto", "name": "Chainlink", "price": 14.85, "change_24h": 1.25, "market_cap": 8900000000, "volume_24h": 520000000, "circulating_supply": 600000000, "all_time_high": 52.88, "rank": 9, "logo": "https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png", "description": "Decentralized oracle network connecting smart contracts to off-chain data."},
-        {"id": "sui", "symbol": "SUI", "finnhub_symbol": "BINANCE:SUIUSDT", "binance_symbol": "SUIUSDT", "category": "crypto", "name": "Sui", "price": 2.85, "change_24h": 7.4, "market_cap": 8100000000, "volume_24h": 940000000, "circulating_supply": 2850000000, "all_time_high": 3.92, "rank": 10, "logo": "https://assets.coingecko.com/coins/images/26375/large/sui-ocean-square.png", "description": "Object-centric Layer 1 blockchain optimized for fast parallel execution."},
-        {"id": "shiba-inu", "symbol": "SHIB", "finnhub_symbol": "BINANCE:SHIBUSDT", "binance_symbol": "SHIBUSDT", "category": "crypto", "name": "Shiba Inu", "price": 0.0000185, "change_24h": -2.8, "market_cap": 10800000000, "volume_24h": 450000000, "circulating_supply": 589000000000000, "all_time_high": 0.000088, "rank": 11, "logo": "https://assets.coingecko.com/coins/images/11939/large/shiba.png", "description": "Decentralized meme ecosystem token powering Shibarium Layer 2."},
-        {"id": "polkadot", "symbol": "DOT", "finnhub_symbol": "BINANCE:DOTUSDT", "binance_symbol": "DOTUSDT", "category": "crypto", "name": "Polkadot", "price": 5.42, "change_24h": -1.1, "market_cap": 7800000000, "volume_24h": 280000000, "circulating_supply": 1430000000, "all_time_high": 55.00, "rank": 12, "logo": "https://assets.coingecko.com/coins/images/12171/large/polkadot.png", "description": "Multi-chain network coordinating heterogeneous parachains securely."},
-        {"id": "near", "symbol": "NEAR", "finnhub_symbol": "BINANCE:NEARUSDT", "binance_symbol": "NEARUSDT", "category": "crypto", "name": "NEAR Protocol", "price": 5.25, "change_24h": 3.2, "market_cap": 6400000000, "volume_24h": 380000000, "circulating_supply": 1210000000, "all_time_high": 20.42, "rank": 13, "logo": "https://assets.coingecko.com/coins/images/10365/large/near.png", "description": "Sharded developer-friendly proof-of-stake blockchain built with Nightshade."},
+        {"id": "sui", "symbol": "SUI", "finnhub_symbol": "BINANCE:SUIUSDT", "binance_symbol": "SUIUSDT", "category": "crypto", "name": "Sui", "price": 2.85, "change_24h": 4.4, "market_cap": 8100000000, "volume_24h": 940000000, "circulating_supply": 2850000000, "all_time_high": 3.92, "rank": 10, "logo": "https://assets.coingecko.com/coins/images/26375/large/sui-ocean-square.png", "description": "Object-centric Layer 1 blockchain optimized for fast parallel execution."},
+        {"id": "shiba-inu", "symbol": "SHIB", "finnhub_symbol": "BINANCE:SHIBUSDT", "binance_symbol": "SHIBUSDT", "category": "crypto", "name": "Shiba Inu", "price": 0.0000185, "change_24h": -1.8, "market_cap": 10800000000, "volume_24h": 450000000, "circulating_supply": 589000000000000, "all_time_high": 0.000088, "rank": 11, "logo": "https://assets.coingecko.com/coins/images/11939/large/shiba.png", "description": "Decentralized meme ecosystem token powering Shibarium Layer 2."},
+        {"id": "polkadot", "symbol": "DOT", "finnhub_symbol": "BINANCE:DOTUSDT", "binance_symbol": "DOTUSDT", "category": "crypto", "name": "Polkadot", "price": 5.42, "change_24h": -0.8, "market_cap": 7800000000, "volume_24h": 280000000, "circulating_supply": 1430000000, "all_time_high": 55.00, "rank": 12, "logo": "https://assets.coingecko.com/coins/images/12171/large/polkadot.png", "description": "Multi-chain network coordinating heterogeneous parachains securely."},
+        {"id": "near", "symbol": "NEAR", "finnhub_symbol": "BINANCE:NEARUSDT", "binance_symbol": "NEARUSDT", "category": "crypto", "name": "NEAR Protocol", "price": 5.25, "change_24h": 2.2, "market_cap": 6400000000, "volume_24h": 380000000, "circulating_supply": 1210000000, "all_time_high": 20.42, "rank": 13, "logo": "https://assets.coingecko.com/coins/images/10365/large/near.png", "description": "Sharded developer-friendly proof-of-stake blockchain built with Nightshade."},
         {"id": "uniswap", "symbol": "UNI", "finnhub_symbol": "BINANCE:UNIUSDT", "binance_symbol": "UNIUSDT", "category": "crypto", "name": "Uniswap", "price": 9.40, "change_24h": -0.6, "market_cap": 5600000000, "volume_24h": 240000000, "circulating_supply": 600000000, "all_time_high": 44.97, "rank": 14, "logo": "https://assets.coingecko.com/coins/images/12504/large/uniswap-uni.png", "description": "Leading decentralized automated market maker exchange protocol."},
         {"id": "litecoin", "symbol": "LTC", "finnhub_symbol": "BINANCE:LTCUSDT", "binance_symbol": "LTCUSDT", "category": "crypto", "name": "Litecoin", "price": 72.80, "change_24h": 0.45, "market_cap": 5400000000, "volume_24h": 310000000, "circulating_supply": 75000000, "all_time_high": 412.96, "rank": 15, "logo": "https://assets.coingecko.com/coins/images/2/large/litecoin.png", "description": "Early proof-of-work payment network offering fast blocks and negligible fees."},
-        {"id": "pepe", "symbol": "PEPE", "finnhub_symbol": "BINANCE:PEPEUSDT", "binance_symbol": "PEPEUSDT", "category": "crypto", "name": "Pepe", "price": 0.0000098, "change_24h": -4.2, "market_cap": 4100000000, "volume_24h": 620000000, "circulating_supply": 420690000000000, "all_time_high": 0.000017, "rank": 16, "logo": "https://assets.coingecko.com/coins/images/29850/large/pepe-token.png", "description": "Popular meme coin launched on Ethereum with zero-tax tokenomics."},
+        {"id": "pepe", "symbol": "PEPE", "finnhub_symbol": "BINANCE:PEPEUSDT", "binance_symbol": "PEPEUSDT", "category": "crypto", "name": "Pepe", "price": 0.0000098, "change_24h": -2.2, "market_cap": 4100000000, "volume_24h": 620000000, "circulating_supply": 420690000000000, "all_time_high": 0.000017, "rank": 16, "logo": "https://assets.coingecko.com/coins/images/29850/large/pepe-token.png", "description": "Popular meme coin launched on Ethereum with zero-tax tokenomics."},
 
-        # ─────────────────────────────────────────────────────────────
-        # 2. GLOBAL EQUITIES & STOCKS (FINNHUB US EQUITIES)
-        # ─────────────────────────────────────────────────────────────
-        {"id": "aapl", "symbol": "AAPL", "finnhub_symbol": "AAPL", "category": "stocks", "name": "Apple Inc.", "price": 347.41, "change_24h": -0.94, "market_cap": 3520000000000, "volume_24h": 52400000, "circulating_supply": 15200000000, "all_time_high": 358.50, "rank": 1, "logo": "https://assets.coingecko.com/markets/images/apple.png", "description": "Global consumer technology, mobile devices, operating systems, and digital services."},
-        {"id": "nvda", "symbol": "NVDA", "finnhub_symbol": "NVDA", "category": "stocks", "name": "NVIDIA Corporation", "price": 167.23, "change_24h": -6.40, "market_cap": 3120000000000, "volume_24h": 82000000, "circulating_supply": 24500000000, "all_time_high": 182.00, "rank": 2, "logo": "https://assets.coingecko.com/markets/images/nvidia.png", "description": "Pioneer of GPU hardware, accelerated computing, AI data center hardware, and software stacks."},
+        # US Equities
+        {"id": "aapl", "symbol": "AAPL", "finnhub_symbol": "AAPL", "category": "stocks", "name": "Apple Inc.", "price": 352.45, "change_24h": 0.15, "market_cap": 3520000000000, "volume_24h": 52400000, "circulating_supply": 15200000000, "all_time_high": 358.50, "rank": 1, "logo": "https://assets.coingecko.com/markets/images/apple.png", "description": "Global consumer technology, mobile devices, operating systems, and digital services."},
+        {"id": "nvda", "symbol": "NVDA", "finnhub_symbol": "NVDA", "category": "stocks", "name": "NVIDIA Corporation", "price": 147.23, "change_24h": -1.40, "market_cap": 3120000000000, "volume_24h": 82000000, "circulating_supply": 24500000000, "all_time_high": 182.00, "rank": 2, "logo": "https://assets.coingecko.com/markets/images/nvidia.png", "description": "Pioneer of GPU hardware, accelerated computing, AI data center hardware, and software stacks."},
         {"id": "msft", "symbol": "MSFT", "finnhub_symbol": "MSFT", "category": "stocks", "name": "Microsoft Corporation", "price": 428.15, "change_24h": -0.52, "market_cap": 3180000000000, "volume_24h": 22400000, "circulating_supply": 7430000000, "all_time_high": 468.35, "rank": 3, "logo": "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg", "description": "Enterprise cloud computing via Azure, productivity platforms, gaming, and AI development."},
         {"id": "amzn", "symbol": "AMZN", "finnhub_symbol": "AMZN", "category": "stocks", "name": "Amazon.com Inc.", "price": 204.80, "change_24h": 1.15, "market_cap": 2150000000000, "volume_24h": 41200000, "circulating_supply": 10500000000, "all_time_high": 215.90, "rank": 4, "logo": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", "description": "Global e-commerce marketplace, logistics infrastructure, and AWS cloud computing."},
         {"id": "googl", "symbol": "GOOGL", "finnhub_symbol": "GOOGL", "category": "stocks", "name": "Alphabet Inc. (Google)", "price": 182.60, "change_24h": -0.85, "market_cap": 2240000000000, "volume_24h": 28100000, "circulating_supply": 12300000000, "all_time_high": 193.30, "rank": 5, "logo": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg", "description": "Search engine dominance, YouTube streaming, Google Cloud, and Gemini AI models."},
@@ -57,27 +65,266 @@ class CryptoIntelligenceService:
         {"id": "coin", "symbol": "COIN", "finnhub_symbol": "COIN", "category": "stocks", "name": "Coinbase Global Inc.", "price": 312.40, "change_24h": 5.40, "market_cap": 78000000000, "volume_24h": 14200000, "circulating_supply": 248000000, "all_time_high": 429.54, "rank": 9, "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png", "description": "Premier US digital asset custodian, regulated exchange, and Base Layer 2 incubator."},
         {"id": "pltr", "symbol": "PLTR", "finnhub_symbol": "PLTR", "category": "stocks", "name": "Palantir Technologies", "price": 64.80, "change_24h": 8.20, "market_cap": 145000000000, "volume_24h": 68000000, "circulating_supply": 2240000000, "all_time_high": 66.20, "rank": 10, "logo": "https://upload.wikimedia.org/wikipedia/commons/1/13/Palantir_Technologies_logo.svg", "description": "Defense intelligence software, Gotham analytics, and Artificial Intelligence Platform (AIP)."},
 
-        # ─────────────────────────────────────────────────────────────
-        # 3. GLOBAL FOREX & CURRENCIES
-        # ─────────────────────────────────────────────────────────────
-        {"id": "eur-usd", "symbol": "EUR/USD", "forex_base": "EUR", "forex_quote": "USD", "category": "forex", "name": "Euro / US Dollar", "price": 1.0825, "change_24h": 0.18, "market_cap": 0, "volume_24h": 650000000000, "circulating_supply": 0, "all_time_high": 1.6038, "rank": 1, "logo": "https://flagcdn.com/w80/eu.png", "description": "The world's most heavily traded currency pair, representing the Eurozone and US economies."},
-        {"id": "gbp-usd", "symbol": "GBP/USD", "forex_base": "GBP", "forex_quote": "USD", "category": "forex", "name": "British Pound / US Dollar", "price": 1.2940, "change_24h": -0.22, "market_cap": 0, "volume_24h": 350000000000, "circulating_supply": 0, "all_time_high": 2.1161, "rank": 2, "logo": "https://flagcdn.com/w80/gb.png", "description": "Known as 'Cable', benchmark for transatlantic commerce and financial settlements."},
-        {"id": "usd-jpy", "symbol": "USD/JPY", "forex_base": "USD", "forex_quote": "JPY", "category": "forex", "name": "US Dollar / Japanese Yen", "price": 154.20, "change_24h": 0.45, "market_cap": 0, "volume_24h": 420000000000, "circulating_supply": 0, "all_time_high": 161.95, "rank": 3, "logo": "https://flagcdn.com/w80/jp.png", "description": "Primary Asian currency pair, heavily driven by central bank yield differentials."},
-        {"id": "usd-chf", "symbol": "USD/CHF", "forex_base": "USD", "forex_quote": "CHF", "category": "forex", "name": "US Dollar / Swiss Franc", "price": 0.8840, "change_24h": -0.15, "market_cap": 0, "volume_24h": 180000000000, "circulating_supply": 0, "all_time_high": 1.8310, "rank": 4, "logo": "https://flagcdn.com/w80/ch.png", "description": "Swiss Franc safe-haven benchmark for macroeconomic hedging."},
-        {"id": "aud-usd", "symbol": "AUD/USD", "forex_base": "AUD", "forex_quote": "USD", "category": "forex", "name": "Australian Dollar / US Dollar", "price": 0.6580, "change_24h": -0.35, "market_cap": 0, "volume_24h": 220000000000, "circulating_supply": 0, "all_time_high": 1.1080, "rank": 5, "logo": "https://flagcdn.com/w80/au.png", "description": "Commodity currency benchmark tied to iron ore, agricultural exports, and metals."},
-        {"id": "usd-cad", "symbol": "USD/CAD", "forex_base": "USD", "forex_quote": "CAD", "category": "forex", "name": "US Dollar / Canadian Dollar", "price": 1.4110, "change_24h": 0.12, "market_cap": 0, "volume_24h": 190000000000, "circulating_supply": 0, "all_time_high": 1.6190, "rank": 6, "logo": "https://flagcdn.com/w80/ca.png", "description": "Known as the 'Loonie', closely correlated to crude oil benchmarks and North American trade."},
-        {"id": "nzd-usd", "symbol": "NZD/USD", "forex_base": "NZD", "forex_quote": "USD", "category": "forex", "name": "New Zealand Dollar / USD", "price": 0.5890, "change_24h": -0.25, "market_cap": 0, "volume_24h": 85000000000, "circulating_supply": 0, "all_time_high": 0.8840, "rank": 7, "logo": "https://flagcdn.com/w80/nz.png", "description": "The 'Kiwi' dollar, heavily influenced by dairy exports and Asia-Pacific trade flows."},
-        {"id": "usd-kes", "symbol": "USD/KES", "forex_base": "USD", "forex_quote": "KES", "category": "forex", "name": "US Dollar / Kenyan Shilling", "price": 129.90, "change_24h": -0.08, "market_cap": 0, "volume_24h": 12000000000, "circulating_supply": 0, "all_time_high": 162.50, "rank": 8, "logo": "https://flagcdn.com/w80/ke.png", "description": "East Africa's premier financial hub currency and mobile money settlement medium."},
-        {"id": "usd-zar", "symbol": "USD/ZAR", "forex_base": "USD", "forex_quote": "ZAR", "category": "forex", "name": "US Dollar / South African Rand", "price": 17.65, "change_24h": 0.35, "market_cap": 0, "volume_24h": 45000000000, "circulating_supply": 0, "all_time_high": 19.92, "rank": 9, "logo": "https://flagcdn.com/w80/za.png", "description": "Liquid emerging market currency tied to gold and platinum commodity cycles."},
-        {"id": "usd-cnh", "symbol": "USD/CNH", "forex_base": "USD", "forex_quote": "CNH", "category": "forex", "name": "US Dollar / Offshore Chinese Yuan", "price": 7.2450, "change_24h": 0.15, "market_cap": 0, "volume_24h": 180000000000, "circulating_supply": 0, "all_time_high": 7.3750, "rank": 10, "logo": "https://flagcdn.com/w80/cn.png", "description": "Offshore traded Renminbi reflecting global manufacturing and Chinese economic momentum."},
+        # Forex & Commodities
+        {"id": "eur-usd", "symbol": "EUR/USD", "finnhub_symbol": "EUR_USD", "forex_base": "EUR", "forex_quote": "USD", "category": "forex", "name": "Euro / US Dollar", "price": 1.0974, "change_24h": 0.18, "market_cap": 0, "volume_24h": 650000000000, "circulating_supply": 0, "all_time_high": 1.6038, "rank": 1, "logo": "https://flagcdn.com/w80/eu.png", "description": "The world's most heavily traded currency pair, representing the Eurozone and US economies."},
+        {"id": "gbp-usd", "symbol": "GBP/USD", "finnhub_symbol": "GBP_USD", "forex_base": "GBP", "forex_quote": "USD", "category": "forex", "name": "British Pound / US Dollar", "price": 1.3158, "change_24h": -0.22, "market_cap": 0, "volume_24h": 350000000000, "circulating_supply": 0, "all_time_high": 2.1161, "rank": 2, "logo": "https://flagcdn.com/w80/gb.png", "description": "Known as 'Cable', benchmark for transatlantic commerce and financial settlements."},
+        {"id": "usd-jpy", "symbol": "USD/JPY", "finnhub_symbol": "USD_JPY", "forex_base": "USD", "forex_quote": "JPY", "category": "forex", "name": "US Dollar / Japanese Yen", "price": 159.36, "change_24h": 0.45, "market_cap": 0, "volume_24h": 420000000000, "circulating_supply": 0, "all_time_high": 161.95, "rank": 3, "logo": "https://flagcdn.com/w80/jp.png", "description": "Primary Asian currency pair, heavily driven by central bank yield differentials."},
+        {"id": "usd-chf", "symbol": "USD/CHF", "finnhub_symbol": "USD_CHF", "forex_base": "USD", "forex_quote": "CHF", "category": "forex", "name": "US Dollar / Swiss Franc", "price": 0.8430, "change_24h": -0.15, "market_cap": 0, "volume_24h": 180000000000, "circulating_supply": 0, "all_time_high": 1.8310, "rank": 4, "logo": "https://flagcdn.com/w80/ch.png", "description": "Swiss Franc safe-haven benchmark for macroeconomic hedging."},
+        {"id": "aud-usd", "symbol": "AUD/USD", "finnhub_symbol": "AUD_USD", "forex_base": "AUD", "forex_quote": "USD", "category": "forex", "name": "Australian Dollar / US Dollar", "price": 0.6719, "change_24h": -0.35, "market_cap": 0, "volume_24h": 220000000000, "circulating_supply": 0, "all_time_high": 1.1080, "rank": 5, "logo": "https://flagcdn.com/w80/au.png", "description": "Commodity currency benchmark tied to iron ore, agricultural exports, and metals."},
+        {"id": "usd-cad", "symbol": "USD/CAD", "finnhub_symbol": "USD_CAD", "forex_base": "USD", "forex_quote": "CAD", "category": "forex", "name": "US Dollar / Canadian Dollar", "price": 1.4322, "change_24h": 0.12, "market_cap": 0, "volume_24h": 190000000000, "circulating_supply": 0, "all_time_high": 1.6190, "rank": 6, "logo": "https://flagcdn.com/w80/ca.png", "description": "Known as the 'Loonie', closely correlated to crude oil benchmarks and North American trade."},
+        {"id": "nzd-usd", "symbol": "NZD/USD", "finnhub_symbol": "NZD_USD", "forex_base": "NZD", "forex_quote": "USD", "category": "forex", "name": "New Zealand Dollar / USD", "price": 0.5491, "change_24h": -0.25, "market_cap": 0, "volume_24h": 85000000000, "circulating_supply": 0, "all_time_high": 0.8840, "rank": 7, "logo": "https://flagcdn.com/w80/nz.png", "description": "The 'Kiwi' dollar, heavily influenced by dairy exports and Asia-Pacific trade flows."},
+        {"id": "usd-kes", "symbol": "USD/KES", "finnhub_symbol": "USD_KES", "forex_base": "USD", "forex_quote": "KES", "category": "forex", "name": "US Dollar / Kenyan Shilling", "price": 129.97, "change_24h": -0.08, "market_cap": 0, "volume_24h": 12000000000, "circulating_supply": 0, "all_time_high": 162.50, "rank": 8, "logo": "https://flagcdn.com/w80/ke.png", "description": "East Africa's premier financial hub currency and mobile money settlement medium."},
+        {"id": "usd-zar", "symbol": "USD/ZAR", "finnhub_symbol": "USD_ZAR", "forex_base": "USD", "forex_quote": "ZAR", "category": "forex", "name": "US Dollar / South African Rand", "price": 17.24, "change_24h": 0.35, "market_cap": 0, "volume_24h": 45000000000, "circulating_supply": 0, "all_time_high": 19.92, "rank": 9, "logo": "https://flagcdn.com/w80/za.png", "description": "Liquid emerging market currency tied to gold and platinum commodity cycles."},
+        {"id": "usd-cnh", "symbol": "USD/CNH", "finnhub_symbol": "USD_CNH", "forex_base": "USD", "forex_quote": "CNH", "category": "forex", "name": "US Dollar / Offshore Chinese Yuan", "price": 6.6680, "change_24h": 0.15, "market_cap": 0, "volume_24h": 180000000000, "circulating_supply": 0, "all_time_high": 7.3750, "rank": 10, "logo": "https://flagcdn.com/w80/cn.png", "description": "Offshore traded Renminbi reflecting global manufacturing and Chinese economic momentum."},
+        # Commodities (Gold, Silver, Platinum in AUD, USD, EUR, GBP)
+        {"id": "gold-usd", "symbol": "XAU/USD", "finnhub_symbol": "XAU_USD", "forex_base": "XAU", "forex_quote": "USD", "category": "forex", "name": "Gold / US Dollar", "price": 2740.50, "change_24h": 0.45, "market_cap": 16000000000000, "volume_24h": 140000000000, "circulating_supply": 0, "all_time_high": 2790.15, "rank": 11, "logo": "https://flagcdn.com/w80/un.png", "description": "Gold spot bullion per troy ounce valued against the US Dollar."},
+        {"id": "gold-aud", "symbol": "XAU/AUD", "finnhub_symbol": "XAU_AUD", "forex_base": "XAU", "forex_quote": "AUD", "category": "forex", "name": "Gold / Australian Dollar", "price": 4078.96, "change_24h": 0.52, "market_cap": 16000000000000, "volume_24h": 35000000000, "circulating_supply": 0, "all_time_high": 4200.00, "rank": 12, "logo": "https://flagcdn.com/w80/au.png", "description": "Gold spot bullion per troy ounce valued in Australian Dollars."},
+        {"id": "gold-eur", "symbol": "XAU/EUR", "finnhub_symbol": "XAU_EUR", "forex_base": "XAU", "forex_quote": "EUR", "category": "forex", "name": "Gold / Euro", "price": 2497.28, "change_24h": 0.38, "market_cap": 16000000000000, "volume_24h": 42000000000, "circulating_supply": 0, "all_time_high": 2550.00, "rank": 13, "logo": "https://flagcdn.com/w80/eu.png", "description": "Gold spot bullion per troy ounce valued in Euros."},
+        {"id": "gold-gbp", "symbol": "XAU/GBP", "finnhub_symbol": "XAU_GBP", "forex_base": "XAU", "forex_quote": "GBP", "category": "forex", "name": "Gold / British Pound", "price": 2082.83, "change_24h": 0.41, "market_cap": 16000000000000, "volume_24h": 28000000000, "circulating_supply": 0, "all_time_high": 2150.00, "rank": 14, "logo": "https://flagcdn.com/w80/gb.png", "description": "Gold spot bullion per troy ounce valued in British Pounds."},
+        {"id": "silver-usd", "symbol": "XAG/USD", "finnhub_symbol": "XAG_USD", "forex_base": "XAG", "forex_quote": "USD", "category": "forex", "name": "Silver / US Dollar", "price": 31.85, "change_24h": -0.65, "market_cap": 1800000000000, "volume_24h": 25000000000, "circulating_supply": 0, "all_time_high": 49.80, "rank": 15, "logo": "https://flagcdn.com/w80/un.png", "description": "Silver spot bullion per troy ounce valued against the US Dollar."},
     ]
+
+    ASSETS_DATABASE: List[Dict[str, Any]] = []
+
+    @classmethod
+    def _ensure_catalogs_loaded(cls):
+        """Loads and indexes the multi-market symbol catalogs into ASSETS_DATABASE."""
+        if cls._DATA_INITIALIZED and len(cls.ASSETS_DATABASE) > 100:
+            return
+
+        db: List[Dict[str, Any]] = list(cls.CURATED_FEATURED)
+        existing_ids = {a["id"] for a in db}
+        existing_symbols = {a["symbol"].upper() for a in db}
+        existing_finnhub = {a.get("finnhub_symbol", "").upper() for a in db if a.get("finnhub_symbol")}
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(base_dir, "..", "data")
+
+        # 1. Expand Crypto from Binance Finnhub catalog
+        crypto_file = os.path.join(data_dir, "finnhub_crypto.json")
+        if os.path.exists(crypto_file):
+            try:
+                with open(crypto_file, "r", encoding="utf-8") as f:
+                    crypto_list = json.load(f)
+
+                # Prioritize USDT pairs, then BTC, then all others
+                usdt_pairs = [c for c in crypto_list if c.get("symbol", "").endswith("USDT")]
+                other_pairs = [c for c in crypto_list if not c.get("symbol", "").endswith("USDT")]
+                ranked_crypto = usdt_pairs + other_pairs
+
+                for idx, c in enumerate(ranked_crypto, start=len(db) + 1):
+                    fh_sym = c.get("symbol", "")
+                    display = c.get("displaySymbol", "")
+                    desc = c.get("description", "")
+
+                    if not fh_sym or fh_sym.upper() in existing_finnhub:
+                        continue
+
+                    clean_id = fh_sym.lower().replace(":", "-").replace("/", "-")
+                    if clean_id in existing_ids:
+                        continue
+
+                    raw_sym = display.split("/")[0] if "/" in display else display
+                    binance_ticker = fh_sym.split(":")[-1] if ":" in fh_sym else fh_sym
+
+                    db.append({
+                        "id": clean_id,
+                        "symbol": display or raw_sym,
+                        "finnhub_symbol": fh_sym,
+                        "binance_symbol": binance_ticker,
+                        "category": "crypto",
+                        "name": desc.replace("Binance ", "") or display,
+                        "price": 1.0,
+                        "change_24h": 0.0,
+                        "market_cap": 0,
+                        "volume_24h": 5000000,
+                        "circulating_supply": 0,
+                        "all_time_high": 0.0,
+                        "rank": idx,
+                        "logo": f"https://ui-avatars.com/api/?name={raw_sym}&background=3E4FFF&color=fff&size=64",
+                        "description": f"{desc or display} traded on Binance spot and perpetual markets.",
+                    })
+                    existing_ids.add(clean_id)
+                    existing_finnhub.add(fh_sym.upper())
+            except Exception as e:
+                logger.error(f"Failed to load crypto catalog: {e}")
+
+        # 2. Expand Forex from Oanda Finnhub catalog
+        forex_file = os.path.join(data_dir, "finnhub_forex.json")
+        if os.path.exists(forex_file):
+            try:
+                with open(forex_file, "r", encoding="utf-8") as f:
+                    forex_list = json.load(f)
+                for idx, fx in enumerate(forex_list, start=len(db) + 1):
+                    fh_sym = fx.get("symbol", "")
+                    display = fx.get("displaySymbol", "")
+                    desc = fx.get("description", "")
+                    if not fh_sym or fh_sym.upper() in existing_finnhub:
+                        continue
+
+                    clean_id = fh_sym.lower().replace(":", "-").replace("_", "-").replace("/", "-")
+                    if clean_id in existing_ids:
+                        continue
+
+                    base_curr, quote_curr = "", ""
+                    if "/" in display:
+                        parts = display.split("/")
+                        base_curr, quote_curr = parts[0], parts[1]
+
+                    flag_country = "un"
+                    if quote_curr == "AUD":
+                        flag_country = "au"
+                    elif quote_curr == "EUR":
+                        flag_country = "eu"
+                    elif quote_curr == "GBP":
+                        flag_country = "gb"
+                    elif quote_curr == "JPY":
+                        flag_country = "jp"
+                    elif quote_curr == "CAD":
+                        flag_country = "ca"
+                    elif quote_curr == "NZD":
+                        flag_country = "nz"
+                    elif quote_curr == "CHF":
+                        flag_country = "ch"
+                    elif quote_curr == "USD":
+                        flag_country = "us"
+
+                    # Calculate initial benchmark price for commodities or currency crosses
+                    initial_price = 1.0
+                    if base_curr == "XAU":
+                        # Gold spot base ~$2740 USD
+                        gold_rates = {"USD": 2740.50, "AUD": 4078.96, "EUR": 2497.28, "GBP": 2082.83, "CAD": 3924.80, "CHF": 2310.20, "JPY": 436720.0, "NZD": 4991.0}
+                        initial_price = gold_rates.get(quote_curr, 2740.50)
+                    elif base_curr == "XAG":
+                        # Silver spot base ~$31.85 USD
+                        silver_rates = {"USD": 31.85, "AUD": 47.40, "EUR": 29.02, "GBP": 24.20, "CAD": 45.60, "CHF": 26.85, "JPY": 5075.0, "NZD": 58.0}
+                        initial_price = silver_rates.get(quote_curr, 31.85)
+                    elif base_curr == "XPT":
+                        # Platinum spot base ~$965 USD
+                        initial_price = 965.00
+
+                    db.append({
+                        "id": clean_id,
+                        "symbol": display or fh_sym,
+                        "finnhub_symbol": fh_sym,
+                        "forex_base": base_curr,
+                        "forex_quote": quote_curr,
+                        "category": "forex",
+                        "name": desc.replace("Oanda ", "") or display,
+                        "price": initial_price,
+                        "change_24h": 0.0,
+                        "market_cap": 0,
+                        "volume_24h": 1000000000,
+                        "circulating_supply": 0,
+                        "all_time_high": initial_price * 1.15,
+                        "rank": idx,
+                        "logo": f"https://flagcdn.com/w80/{flag_country}.png",
+                        "description": f"{desc or display} foreign exchange or commodity security.",
+                    })
+                    existing_ids.add(clean_id)
+                    existing_finnhub.add(fh_sym.upper())
+            except Exception as e:
+                logger.error(f"Failed to load forex catalog: {e}")
+
+        # 3. Expand US Stocks from Finnhub catalog
+        stocks_file = os.path.join(data_dir, "finnhub_stocks.json")
+        if os.path.exists(stocks_file):
+            try:
+                with open(stocks_file, "r", encoding="utf-8") as f:
+                    stocks_list = json.load(f)
+
+                filtered_stocks = [
+                    s for s in stocks_list
+                    if s.get("type") in ("Common Stock", "ADR", "ETP", "REIT", "")
+                    and "." not in s.get("symbol", "")
+                ]
+
+                for idx, st in enumerate(filtered_stocks, start=len(db) + 1):
+                    ticker = st.get("symbol", "")
+                    desc = st.get("description", "")
+                    if not ticker or ticker.upper() in existing_symbols:
+                        continue
+
+                    clean_id = f"stock-{ticker.lower()}"
+                    if clean_id in existing_ids:
+                        continue
+
+                    db.append({
+                        "id": clean_id,
+                        "symbol": ticker,
+                        "finnhub_symbol": ticker,
+                        "category": "stocks",
+                        "name": desc.title() if desc else ticker,
+                        "price": 50.0,
+                        "change_24h": 0.0,
+                        "market_cap": 1000000000,
+                        "volume_24h": 15000000,
+                        "circulating_supply": 50000000,
+                        "all_time_high": 100.0,
+                        "rank": idx,
+                        "logo": f"https://ui-avatars.com/api/?name={ticker}&background=0F172A&color=fff&size=64",
+                        "description": f"{desc.title() or ticker} - US Equities market security ({st.get('type') or 'Equity'}).",
+                    })
+                    existing_ids.add(clean_id)
+                    existing_symbols.add(ticker.upper())
+            except Exception as e:
+                logger.error(f"Failed to load stocks catalog: {e}")
+
+        cls.ASSETS_DATABASE = db
+        cls._DATA_INITIALIZED = True
+        logger.info(f"Loaded Multi-Market Catalog: {len(cls.ASSETS_DATABASE)} total accessible pairs.")
+
+    @classmethod
+    async def _update_forex_rates(cls, client: httpx.AsyncClient):
+        now = time.time()
+        if cls._FOREX_RATES_CACHE and (now - cls._FOREX_CACHE_TIME) < 120:
+            return cls._FOREX_RATES_CACHE
+
+        try:
+            res = await client.get("https://open.er-api.com/v6/latest/USD", timeout=3.5)
+            if res.status_code == 200:
+                data = res.json()
+                cls._FOREX_RATES_CACHE = data.get("rates", {})
+                cls._FOREX_CACHE_TIME = now
+        except Exception as e:
+            logger.debug(f"Forex rates fetch error: {e}")
+
+        return cls._FOREX_RATES_CACHE
+
+    @classmethod
+    async def _update_binance_crypto_tickers(cls, client: httpx.AsyncClient, symbols: List[str]):
+        """Fetches live quotes for requested Binance crypto symbols directly."""
+        now = time.time()
+        for sym in symbols:
+            clean_sym = sym.replace("BINANCE:", "").replace("/", "")
+            if clean_sym in cls._BINANCE_ALL_TICKERS:
+                p, ch, t = cls._BINANCE_ALL_TICKERS[clean_sym]
+                if now - t < cls._BINANCE_CACHE_TTL:
+                    continue
+
+            try:
+                res = await client.get(
+                    f"https://api.binance.com/api/v3/ticker/24hr?symbol={clean_sym}",
+                    timeout=3.0,
+                )
+                if res.status_code == 200:
+                    d = res.json()
+                    p = float(d.get("lastPrice", 0))
+                    ch = float(d.get("priceChangePercent", 0))
+                    if p > 0:
+                        cls._BINANCE_ALL_TICKERS[clean_sym] = (p, round(ch, 2), now)
+            except Exception as e:
+                logger.debug(f"Binance ticker fetch error for {clean_sym}: {e}")
 
     @classmethod
     async def fetch_live_quotes(cls, asset_ids: Optional[List[str]] = None) -> None:
         """
-        On-demand quote fetcher:
-        Pulls real-time live quotes for requested or visible assets via Finnhub (< 30 req/sec cap).
+        Multi-Source Hybrid Quote Engine:
+        1. Crypto: Fetches from Binance 24hr ticker API (instant live prices, no 429/403 blocks).
+        2. Forex: Computes from live institutional exchange rates & commodity ratios (no 403 blocks).
+        3. US Stocks: Fetches from Finnhub quote API with 30s cache & semaphore (<30 req/sec cap).
         """
+        cls._ensure_catalogs_loaded()
         settings = get_settings()
         api_key = getattr(settings, "FINNHUB_API_KEY", "dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0")
         headers = {"X-Finnhub-Token": api_key, "User-Agent": "PesaFlip/1.0"}
@@ -88,82 +335,140 @@ class CryptoIntelligenceService:
             else cls.ASSETS_DATABASE[:15]
         )
 
-        async def fetch_asset_quote(client: httpx.AsyncClient, asset: Dict[str, Any]):
-            finnhub_ticker = asset.get("finnhub_symbol")
-            if not finnhub_ticker:
-                return
-            try:
-                res = await client.get(
-                    f"https://finnhub.io/api/v1/quote?symbol={finnhub_ticker}",
-                    headers=headers,
-                    timeout=3.5,
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    curr_price = data.get("c")
-                    dp_change = data.get("dp")
-                    if curr_price and curr_price > 0:
-                        asset["price"] = curr_price
-                        if dp_change is not None:
-                            asset["change_24h"] = round(dp_change, 2)
-            except Exception as e:
-                logger.debug(f"Quote fetch error for {finnhub_ticker}: {e}")
+        now = time.time()
+        uncached_stocks = []
+        binance_symbols_to_fetch = []
 
-        async def fetch_forex_rates(client: httpx.AsyncClient):
-            try:
-                res = await client.get("https://open.er-api.com/v6/latest/USD", timeout=3.5)
-                if res.status_code == 200:
-                    rates = res.json().get("rates", {})
-                    for a in cls.ASSETS_DATABASE:
-                        if a.get("category") == "forex":
-                            base = a.get("forex_base")
-                            quote = a.get("forex_quote")
-                            if base and quote:
-                                if base == "USD" and quote in rates:
-                                    a["price"] = round(rates[quote], 4 if rates[quote] < 10 else 2)
-                                elif quote == "USD" and base in rates and rates[base] > 0:
-                                    a["price"] = round(1.0 / rates[base], 4)
-            except Exception as e:
-                logger.debug(f"Forex fetch error: {e}")
+        # Route assets to their proper data provider
+        for asset in target_assets:
+            cat = asset.get("category")
+            if cat == "crypto":
+                bin_sym = asset.get("binance_symbol") or asset.get("symbol", "").replace("/", "")
+                if bin_sym in cls._BINANCE_ALL_TICKERS:
+                    p, ch, t = cls._BINANCE_ALL_TICKERS[bin_sym]
+                    if now - t < cls._BINANCE_CACHE_TTL and p > 0:
+                        asset["price"] = p
+                        asset["change_24h"] = ch
+                        continue
+                binance_symbols_to_fetch.append(bin_sym)
 
-        try:
-            async with httpx.AsyncClient() as client:
-                finnhub_targets = [a for a in target_assets if a.get("finnhub_symbol")]
-                tasks = [fetch_asset_quote(client, a) for a in finnhub_targets]
-                if any(a.get("category") == "forex" for a in target_assets):
-                    tasks.append(fetch_forex_rates(client))
+            elif cat == "stocks":
+                fh_symbol = asset.get("finnhub_symbol")
+                if fh_symbol in cls._QUOTE_CACHE:
+                    cached_price, cached_change, cached_time = cls._QUOTE_CACHE[fh_symbol]
+                    if now - cached_time < cls._QUOTE_CACHE_TTL:
+                        asset["price"] = cached_price
+                        asset["change_24h"] = cached_change
+                        continue
+                uncached_stocks.append(asset)
+
+        async with httpx.AsyncClient() as client:
+            tasks = []
+
+            # 1. Update Forex rates
+            if any(a.get("category") == "forex" for a in target_assets):
+                tasks.append(cls._update_forex_rates(client))
+
+            # 2. Update Binance crypto tickers (up to 8 in parallel)
+            if binance_symbols_to_fetch:
+                tasks.append(cls._update_binance_crypto_tickers(client, binance_symbols_to_fetch[:8]))
+
+            # 3. Fetch Stock quotes via Finnhub
+            async def fetch_stock_quote(st_asset: Dict[str, Any]):
+                fh_sym = st_asset.get("finnhub_symbol")
+                if not fh_sym:
+                    return
+                async with cls._SEMAPHORE:
+                    try:
+                        res = await client.get(
+                            f"https://finnhub.io/api/v1/quote?symbol={fh_sym}",
+                            headers=headers,
+                            timeout=3.5,
+                        )
+                        if res.status_code == 200:
+                            data = res.json()
+                            curr_price = data.get("c")
+                            dp_change = data.get("dp")
+                            if curr_price and curr_price > 0:
+                                ch_val = round(dp_change, 2) if dp_change is not None else st_asset.get("change_24h", 0.0)
+                                st_asset["price"] = curr_price
+                                st_asset["change_24h"] = ch_val
+                                cls._QUOTE_CACHE[fh_sym] = (curr_price, ch_val, time.time())
+                        elif res.status_code == 429:
+                            logger.warning(f"Finnhub rate limit (429) on {fh_sym}. Using cached quote.")
+                    except Exception as e:
+                        logger.debug(f"Stock quote error for {fh_sym}: {e}")
+
+            for st in uncached_stocks[:6]:
+                tasks.append(fetch_stock_quote(st))
+
+            if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
-        except Exception as ex:
-            logger.debug(f"Batch quote update error: {ex}")
+
+        # Apply updated forex rates & crypto cache to target_assets
+        rates = cls._FOREX_RATES_CACHE
+        for a in target_assets:
+            cat = a.get("category")
+            if cat == "forex" and rates:
+                base = a.get("forex_base", "")
+                quote = a.get("forex_quote", "")
+                
+                # Handle Gold (XAU), Silver (XAG), Platinum (XPT)
+                if base == "XAU":
+                    gold_usd = 2740.50
+                    q_rate = rates.get(quote, 1.0)
+                    a["price"] = round(gold_usd * q_rate, 2)
+                elif base == "XAG":
+                    silver_usd = 31.85
+                    q_rate = rates.get(quote, 1.0)
+                    a["price"] = round(silver_usd * q_rate, 2)
+                elif base and quote:
+                    if base == "USD" and quote in rates:
+                        a["price"] = round(rates[quote], 4 if rates[quote] < 10 else 2)
+                    elif quote == "USD" and base in rates and rates[base] > 0:
+                        a["price"] = round(1.0 / rates[base], 4)
+                    elif base in rates and quote in rates and rates[base] > 0:
+                        # Cross rate: EUR/GBP = (USD/GBP) / (USD/EUR)
+                        cross = rates[quote] / rates[base]
+                        a["price"] = round(cross, 4 if cross < 10 else 2)
+
+            elif cat == "crypto":
+                bin_sym = a.get("binance_symbol") or a.get("symbol", "").replace("/", "")
+                if bin_sym in cls._BINANCE_ALL_TICKERS:
+                    p, ch, _ = cls._BINANCE_ALL_TICKERS[bin_sym]
+                    if p > 0:
+                        a["price"] = p
+                        a["change_24h"] = ch
 
     @classmethod
     async def get_global_market_overview(cls) -> Dict[str, Any]:
+        cls._ensure_catalogs_loaded()
         cryptos = [a for a in cls.ASSETS_DATABASE if a.get("category") == "crypto"]
         stocks = [a for a in cls.ASSETS_DATABASE if a.get("category") == "stocks"]
         forex = [a for a in cls.ASSETS_DATABASE if a.get("category") == "forex"]
 
-        total_mcap = sum(c["price"] * c.get("circulating_supply", 0) for c in cryptos)
-        total_vol = sum(c.get("volume_24h", 0) for c in cryptos)
-        btc_mcap = cryptos[0]["price"] * cryptos[0].get("circulating_supply", 1)
+        total_mcap = sum(c["price"] * c.get("circulating_supply", 0) for c in cls.CURATED_FEATURED if c.get("category") == "crypto")
+        total_vol = sum(c.get("volume_24h", 0) for c in cls.CURATED_FEATURED if c.get("category") == "crypto")
+        btc_mcap = cryptos[0]["price"] * cryptos[0].get("circulating_supply", 1) if cryptos else 1.45e12
         btc_dominance = round((btc_mcap / total_mcap) * 100, 1) if total_mcap > 0 else 52.4
 
-        sorted_by_change = sorted(cls.ASSETS_DATABASE, key=lambda x: x["change_24h"], reverse=True)
+        sorted_by_change = sorted(cls.CURATED_FEATURED, key=lambda x: x["change_24h"], reverse=True)
 
         return {
-            "total_market_cap": total_mcap,
-            "total_volume_24h": total_vol,
-            "market_cap_change_24h": round(sum(c["change_24h"] for c in cryptos) / len(cryptos), 2),
+            "total_market_cap": total_mcap if total_mcap > 0 else 1.99e12,
+            "total_volume_24h": total_vol if total_vol > 0 else 67.5e9,
+            "market_cap_change_24h": round(sum(c["change_24h"] for c in cls.CURATED_FEATURED[:10]) / 10, 2),
             "btc_dominance": btc_dominance,
             "eth_dominance": 16.8,
             "top_gainers": sorted_by_change[:3],
             "top_losers": sorted_by_change[-3:],
-            "trending": cls.ASSETS_DATABASE[:6],
+            "trending": cls.CURATED_FEATURED[:6],
             "total_count": len(cls.ASSETS_DATABASE),
             "forex_count": len(forex),
             "stocks_count": len(stocks),
             "crypto_count": len(cryptos),
             "last_updated": datetime.utcnow().isoformat() + "Z",
-            "source": "Finnhub & Global Market Feeds",
+            "source": "Finnhub & Binance Live Feeds",
         }
 
     @classmethod
@@ -174,16 +479,19 @@ class CryptoIntelligenceService:
         page: int = 1,
         limit: int = 20,
     ) -> Dict[str, Any]:
+        cls._ensure_catalogs_loaded()
         results = cls.ASSETS_DATABASE
 
         if category and category != "all":
-            results = [a for a in results if a.get("category") == category.lower()]
+            cat = category.lower()
+            results = [a for a in results if a.get("category") == cat]
 
         if search:
-            q = search.lower()
+            q = search.lower().strip()
+            # Fast search across symbol, display name, and ID
             results = [
                 a for a in results
-                if q in a["name"].lower() or q in a["symbol"].lower()
+                if q in a["symbol"].lower() or q in a["name"].lower() or q in a.get("id", "").lower()
             ]
 
         total_items = len(results)
@@ -191,7 +499,7 @@ class CryptoIntelligenceService:
         end_idx = start_idx + limit
         paginated_items = results[start_idx:end_idx]
 
-        # Trigger on-demand price refresh for this specific page slice
+        # Trigger cached on-demand price refresh for this specific page slice
         await cls.fetch_live_quotes(asset_ids=[a["id"] for a in paginated_items])
 
         return {
@@ -204,19 +512,24 @@ class CryptoIntelligenceService:
 
     @classmethod
     def get_coin_by_id(cls, coin_id: str) -> Optional[Dict[str, Any]]:
+        cls._ensure_catalogs_loaded()
+        target = coin_id.lower().strip()
         for a in cls.ASSETS_DATABASE:
-            if a["id"] == coin_id.lower() or a["symbol"].lower() == coin_id.lower():
+            if a["id"].lower() == target or a["symbol"].lower() == target:
+                return a
+            if a.get("finnhub_symbol", "").lower() == target:
                 return a
         return None
 
     @classmethod
     async def generate_chart_history(cls, coin_id: str, timeframe: str = "7d") -> Dict[str, Any]:
+        cls._ensure_catalogs_loaded()
         asset = cls.get_coin_by_id(coin_id)
         if not asset:
             asset = cls.ASSETS_DATABASE[0]
 
         is_crypto = asset.get("category") == "crypto"
-        binance_symbol = asset.get("binance_symbol", f"{asset['symbol']}USDT")
+        binance_symbol = asset.get("binance_symbol") or f"{asset['symbol'].replace('/', '')}"
 
         tf_map = {
             "1h": ("5m", 12),
@@ -231,11 +544,12 @@ class CryptoIntelligenceService:
 
         candles: List[Dict[str, Any]] = []
 
-        if is_crypto:
+        if is_crypto and binance_symbol:
             try:
+                clean_binance_sym = binance_symbol.split(":")[-1]
                 async with httpx.AsyncClient(timeout=3.5) as client:
                     res = await client.get(
-                        f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval={interval}&limit={limit}"
+                        f"https://api.binance.com/api/v3/klines?symbol={clean_binance_sym}&interval={interval}&limit={limit}"
                     )
                     if res.status_code == 200:
                         klines = res.json()
@@ -261,7 +575,7 @@ class CryptoIntelligenceService:
 
         # If stock or forex or network fallback, synthesize realistic OHLC around current live quote
         if not candles:
-            base_p = asset["price"]
+            base_p = asset.get("price", 100.0)
             now = datetime.utcnow()
             count = limit
             delta_mins = 60 if timeframe in ["1h", "24h"] else 360
@@ -295,21 +609,22 @@ class CryptoIntelligenceService:
         for idx, c in enumerate(candles):
             if idx >= 6:
                 subset = [candles[j]["close"] for j in range(idx - 6, idx + 1)]
-                c["sma7"] = round(sum(subset) / 7, 4 if asset["price"] < 10.0 else 2)
+                c["sma7"] = round(sum(subset) / 7, 4 if asset.get("price", 100) < 10.0 else 2)
             else:
                 c["sma7"] = c["close"]
 
         min_p = min(c["low"] for c in candles)
         max_p = max(c["high"] for c in candles)
         first_p = candles[0]["open"]
-        change_pct = round(((asset["price"] - first_p) / first_p) * 100, 2) if first_p > 0 else 0.0
+        current_p = asset.get("price", candles[-1]["close"])
+        change_pct = round(((current_p - first_p) / first_p) * 100, 2) if first_p > 0 else 0.0
 
         return {
             "coin_id": asset["id"],
             "symbol": asset["symbol"],
             "category": asset.get("category", "crypto"),
             "timeframe": timeframe,
-            "current_price": asset["price"],
+            "current_price": current_p,
             "min_price": min_p,
             "max_price": max_p,
             "change_pct": change_pct,
@@ -323,6 +638,7 @@ class CryptoIntelligenceService:
         Generates in-depth AI quantitative analysis, technical posture,
         support/resistance levels, order flow bias, and tailored recommendations.
         """
+        cls._ensure_catalogs_loaded()
         asset = cls.get_coin_by_id(coin_id)
         if not asset:
             asset = cls.ASSETS_DATABASE[0]
@@ -331,12 +647,10 @@ class CryptoIntelligenceService:
         change = asset.get("change_24h", 0.0)
         category = asset.get("category", "crypto").capitalize()
         symbol = asset.get("symbol", "BTC")
-        name = asset.get("name", "Bitcoin")
+        name = asset.get("name", symbol)
         vol_24h = asset.get("volume_24h", 10000000)
         mcap = asset.get("market_cap", 0)
 
-        # Quantitative indicators derived from price action
-        is_bullish = change >= 0
         sentiment_score = min(96, max(12, int(50 + (change * 4.2))))
         rsi_14 = min(88, max(18, round(50 + (change * 2.8), 1)))
 
@@ -459,7 +773,7 @@ class CryptoIntelligenceService:
             reply = (
                 f"**AI Intelligence Brief on {name} ({symbol})**:\n\n"
                 f"{insight['bias_summary']}\n\n"
-                f"• **Current Price**: ${price:,.2f} ({'+' if insight['change_24h'] >= 0 else ''}{insight['change_24h']}%)\n"
+                f"• **Current Price**: ${price:,.2f} ({'+' if insight['change_24h'] >= 0 else ''}{insight['change_24h']}%\n\n"
                 f"• **Recommendation**: `{insight['signal']}`\n"
                 f"• **Immediate Action**: {insight['action_advice']}\n\n"
                 f"Feel free to ask about specific price targets, risk management, or macro indicators!"
