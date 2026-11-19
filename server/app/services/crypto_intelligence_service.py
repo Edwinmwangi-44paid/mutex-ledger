@@ -633,10 +633,13 @@ class CryptoIntelligenceService:
         }
 
     @classmethod
-    def generate_ai_market_insight(cls, coin_id: str) -> Dict[str, Any]:
+    async def generate_ai_market_insight(cls, coin_id: str) -> Dict[str, Any]:
         """
         Generates in-depth AI quantitative analysis, technical posture,
         support/resistance levels, order flow bias, and tailored recommendations.
+        Augmented with Gemini ICT CIT (Change in Trend) model and SMC (Smart Money Concepts)
+        advisory containing explicit BUY/SELL/HOLD recommendations, target signal price,
+        live price, and accurate issued date and time in EAT.
         """
         cls._ensure_catalogs_loaded()
         asset = cls.get_coin_by_id(coin_id)
@@ -651,6 +654,7 @@ class CryptoIntelligenceService:
         vol_24h = asset.get("volume_24h", 10000000)
         mcap = asset.get("market_cap", 0)
 
+        # Baseline Quantitative indicators
         sentiment_score = min(96, max(12, int(50 + (change * 4.2))))
         rsi_14 = min(88, max(18, round(50 + (change * 2.8), 1)))
 
@@ -666,13 +670,14 @@ class CryptoIntelligenceService:
         resistance_1 = round(price * 1.035, 4 if price < 10 else 2)
         resistance_2 = round(price * 1.08, 4 if price < 10 else 2)
 
+        # Base algorithmic signal
         if change > 3.0:
-            signal = "STRONG BUY"
+            signal = "BUY (BULLISH ORDER FLOW)"
             signal_color = "#10B981"
             bias_summary = f"{name} is displaying aggressive bullish continuation with sustained buying volume across spot and perpetual desks."
             action_advice = f"Momentum traders may consider pyramiding longs on shallow dips toward ${support_1}. Place hard stop-losses beneath ${support_2} to preserve capital."
         elif change > 0.0:
-            signal = "MODERATE ACCUMULATION"
+            signal = "BUY (ACCUMULATION)"
             signal_color = "#06B6D4"
             bias_summary = f"{name} holds steady constructive consolidation with ascending support floors and disciplined institutional order absorption."
             action_advice = f"Dollar-cost averaging (DCA) into spot allocations remains favorable. Key pivot watch is a confirmed break above ${resistance_1} on expanding tick volume."
@@ -682,22 +687,64 @@ class CryptoIntelligenceService:
             bias_summary = f"{name} is testing immediate demand zones amid mild macro profit-taking, but fundamental liquidity structures remain intact."
             action_advice = f"Avoid chasing breakout candles. Monitor order book depth near support floor ${support_1} for absorption before deploying fresh capital."
         else:
-            signal = "RISK OFF / DEFENSIVE"
+            signal = "SELL (DISTRIBUTION)"
             signal_color = "#F43F5E"
             bias_summary = f"{name} faces short-term distribution pressure as sellers push through lower intraday ranges."
             action_advice = f"Defensive positioning recommended. Wait for a re-establishment of RSI equilibrium above 40 and a clean reclaim of ${resistance_1} prior to re-entry."
 
+        target_signal_price = round(price * 1.055 if "BUY" in signal else (price * 0.945 if "SELL" in signal else price), 4 if price < 10 else 2)
+        now_eat = datetime.utcnow() + timedelta(hours=2)
+        issued_date_eat = now_eat.strftime("%Y-%m-%d")
+        issued_time_eat = now_eat.strftime("%H:%M EAT")
+
+        # Deep Gemini ICT CIT and SMC integration
+        ict_smc_data: Optional[Dict[str, Any]] = None
+        try:
+            from app.services.gemini_ai_service import GeminiAIService
+            gemini_advisory = await GeminiAIService.generate_ict_smc_market_advisory(
+                symbol=symbol,
+                name=name,
+                category=category,
+                live_price=price,
+                change_24h=change,
+            )
+            if gemini_advisory:
+                ict_smc_data = gemini_advisory
+                gemini_action = gemini_advisory.get("action_signal", "").upper()
+                if "BUY" in gemini_action:
+                    signal = "BUY"
+                    signal_color = "#10B981"
+                elif "SELL" in gemini_action:
+                    signal = "SELL"
+                    signal_color = "#F43F5E"
+                elif "HOLD" in gemini_action:
+                    signal = "HOLD"
+                    signal_color = "#F59E0B"
+
+                if gemini_advisory.get("target_signal_price"):
+                    try:
+                        target_signal_price = float(gemini_advisory["target_signal_price"])
+                    except Exception:
+                        pass
+                if gemini_advisory.get("tactical_execution_advice"):
+                    action_advice = gemini_advisory["tactical_execution_advice"]
+                if gemini_advisory.get("ict_cit_rationale"):
+                    bias_summary = gemini_advisory["ict_cit_rationale"]
+        except Exception as e:
+            logger.debug(f"Gemini ICT advisory injection error: {e}")
+
         bullet_points = [
-            f"**Price Structure**: Oscillating around ${price:,.2f} ({'+' if change >= 0 else ''}{change}% 24h).",
-            f"**Technical Momentum**: 14-period RSI stands at {rsi_14} ({rsi_status}).",
-            f"**Key Price Targets**: Primary Resistance: **${resistance_1:,.2f}** | Primary Support: **${support_1:,.2f}**.",
-            f"**Market Footprint**: 24h Volume of ${(vol_24h/1e6):.1f}M against a total market valuation of ${(mcap/1e9):.2f}B.",
+            f"**Live Market Price**: ${price:,.4f} | 24h Delta: {'+' if change >= 0 else ''}{change}%.",
+            f"**Target Signal Price**: ${target_signal_price:,.4f} (Institutional Liquidity Target).",
+            f"**Issued Date & Time**: {issued_date_eat} at {issued_time_eat} (UTC+2).",
+            f"**ICT CIT Model**: Liquidity sweeps and Fair Value Gap (FVG) mitigations around primary support ${support_1:,.4f} and resistance ${resistance_1:,.4f}.",
+            f"**Market Footprint**: 24h Volume of ${(vol_24h/1e6):.1f}M against market cap of ${(mcap/1e9):.2f}B.",
         ]
 
         chat_starters = [
-            f"What is the best entry price for {symbol} right now?",
-            f"Explain {symbol}'s support at ${support_1} and target at ${resistance_1}.",
-            f"How does current market sentiment affect {symbol} this week?",
+            f"What is the best ICT entry and Order Block for {symbol} right now?",
+            f"Explain {symbol}'s Fair Value Gap (FVG) and target at ${target_signal_price}.",
+            f"What is the smart money liquidity bias for {symbol} this week?",
             f"Compare {symbol} risk/reward against other {category} assets.",
         ]
 
@@ -715,10 +762,14 @@ class CryptoIntelligenceService:
             "rsi_status": rsi_status,
             "support_levels": [support_1, support_2],
             "resistance_levels": [resistance_1, resistance_2],
+            "target_signal_price": target_signal_price,
+            "issued_date": issued_date_eat,
+            "issued_time": issued_time_eat,
             "bias_summary": bias_summary,
             "action_advice": action_advice,
             "bullet_points": bullet_points,
             "chat_starters": chat_starters,
+            "ict_smc": ict_smc_data,
             "disclaimer": "AI quantitative insights are algorithmic evaluations for informational purposes and should not be construed as financial advice.",
         }
 

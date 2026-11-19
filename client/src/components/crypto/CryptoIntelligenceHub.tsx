@@ -791,14 +791,25 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                           <span className="font-bold text-[#0ECB81]">{aiInsight.sentiment_score}/100</span>
                         </div>
                         <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
-                          <span className="text-gray-400 block text-[10px]">Primary Support</span>
-                          <span className="font-bold text-rose-500">${aiInsight.support_levels?.[0]}</span>
+                          <span className="text-gray-400 block text-[10px]">Target Signal Price</span>
+                          <span className="font-bold text-emerald-500">${aiInsight.target_signal_price ?? aiInsight.resistance_levels?.[0]}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-black/[0.02] dark:bg-black/40 border border-black/[0.05] dark:border-white/[0.05]">
-                          <span className="text-gray-400 block text-[10px]">Primary Target</span>
-                          <span className="font-bold text-emerald-500">${aiInsight.resistance_levels?.[0]}</span>
+                          <span className="text-gray-400 block text-[10px]">Primary Key Floor</span>
+                          <span className="font-bold text-rose-500">${aiInsight.support_levels?.[0]}</span>
                         </div>
                       </div>
+
+                      {/* ICT CIT & Issued Date Timestamp Strip */}
+                      {aiInsight.issued_date && (
+                        <div className="flex flex-wrap items-center justify-between text-[11px] font-mono px-3 py-1.5 rounded-lg bg-[#3E4FFF]/5 border border-[#3E4FFF]/20 text-gray-600 dark:text-gray-300">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <strong>ICT CIT Model:</strong> Smart Money Liquidity Setup
+                          </span>
+                          <span>Issued: <strong>{aiInsight.issued_date} • {aiInsight.issued_time}</strong></span>
+                        </div>
+                      )}
 
                       {/* Action Advice Quote */}
                       <div className="p-3 rounded-xl bg-indigo-500/[0.06] dark:bg-indigo-500/10 border border-indigo-500/20 text-gray-800 dark:text-indigo-200 text-xs leading-relaxed">

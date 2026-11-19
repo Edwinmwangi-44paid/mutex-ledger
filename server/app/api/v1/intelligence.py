@@ -49,7 +49,7 @@ async def get_coin_chart(
 @router.get("/crypto/coins/{coin_id}/ai-insight")
 async def get_coin_ai_insight(coin_id: str):
     """Generates quantitative AI technical review, support/resistance targets, and market advice."""
-    return CryptoIntelligenceService.generate_ai_market_insight(coin_id=coin_id)
+    return await CryptoIntelligenceService.generate_ai_market_insight(coin_id=coin_id)
 
 
 @router.post("/crypto/coins/{coin_id}/ai-chat")
