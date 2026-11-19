@@ -870,9 +870,16 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
                 </div>
               ))}
               {isSendingChat && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 pl-9">
-                  <div className="w-2 h-2 rounded-full bg-[#3E4FFF] animate-ping" />
-                  <span>AI analyst reviewing match tactical data...</span>
+                <div className="flex items-center gap-2.5 pl-1 animate-fade-in">
+                  <div className="w-7 h-7 rounded-full bg-[#3E4FFF] text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Bot className="w-3.5 h-3.5 animate-pulse" />
+                  </div>
+                  <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-none bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-gray-600 dark:text-gray-300 text-xs flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3E4FFF] animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3E4FFF] animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3E4FFF] animate-bounce [animation-delay:0.4s]" />
+                    <span className="text-[10px] font-mono text-gray-500 ml-1">Analyzing tactics with Gemini AI...</span>
+                  </div>
                 </div>
               )}
             </div>

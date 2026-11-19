@@ -779,7 +779,7 @@ class CryptoIntelligenceService:
         Conversational assistant providing instant intelligent technical & market breakdown
         answering user questions about a specific cryptocurrency, stock, or forex pair using live Gemini AI.
         """
-        insight = cls.generate_ai_market_insight(coin_id)
+        insight = await cls.generate_ai_market_insight(coin_id)
         symbol = insight["symbol"]
         name = insight["name"]
         price = insight["price"]
