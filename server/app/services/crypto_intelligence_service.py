@@ -774,7 +774,7 @@ class CryptoIntelligenceService:
         }
 
     @classmethod
-    async def get_ai_chat_response(cls, coin_id: str, message: str) -> Dict[str, Any]:
+    async def get_ai_chat_response(cls, coin_id: str, message: str, chat_history: Optional[list] = None) -> Dict[str, Any]:
         """
         Conversational assistant providing instant intelligent technical & market breakdown
         answering user questions about a specific cryptocurrency, stock, or forex pair using live Gemini AI.
@@ -793,6 +793,7 @@ class CryptoIntelligenceService:
                 name=name,
                 user_message=message,
                 market_context={"price": price, "signal": insight.get("signal", "WATCH")},
+                chat_history=chat_history,
             )
             if gemini_reply:
                 return {

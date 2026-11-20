@@ -131,6 +131,11 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
     try {
       const hTeam = data.fixture.home_team.name;
       const aTeam = data.fixture.away_team.name;
+      const historyPayload = chatMessages.slice(-6).map((m) => ({
+        sender: m.sender,
+        text: m.text,
+      }));
+
       const res = await fetch(`${apiBase}/sports/fixtures/${id}/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,6 +147,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsProps> = ({ apiBase }) => {
             winner: data.ai_analysis?.most_likely_outcome,
             score: data.ai_analysis?.predicted_score,
           },
+          chat_history: historyPayload,
         }),
       });
 

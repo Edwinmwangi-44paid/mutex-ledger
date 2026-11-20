@@ -38,9 +38,11 @@ export const MarketAIChatModal: React.FC<MarketAIChatModalProps> = ({
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with greeting & coin insight summary
+  // Initialize with greeting & coin insight summary only if empty or asset changes
+  const prevAssetIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (asset && isOpen) {
+    if (asset && isOpen && prevAssetIdRef.current !== asset.id) {
+      prevAssetIdRef.current = asset.id;
       const initialText =
         insight?.bias_summary ||
         `Hello! I'm your AI Market Strategist tracking ${asset.name} (${asset.symbol}) live. Ask me about entry zones, support/resistance levels, RSI signals, or risk mitigation.`;
@@ -54,7 +56,7 @@ export const MarketAIChatModal: React.FC<MarketAIChatModalProps> = ({
         },
       ]);
     }
-  }, [asset?.id, isOpen, insight]);
+  }, [asset?.id, isOpen]);
 
   // Auto-scroll
   useEffect(() => {
@@ -81,10 +83,18 @@ export const MarketAIChatModal: React.FC<MarketAIChatModalProps> = ({
     setIsTyping(true);
 
     try {
+      const historyPayload = messages.slice(-6).map((m) => ({
+        sender: m.sender,
+        text: m.text,
+      }));
+
       const res = await fetch(`${apiBase}/crypto/coins/${asset.id}/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: textToSend.trim() }),
+        body: JSON.stringify({
+          message: textToSend.trim(),
+          chat_history: historyPayload,
+        }),
       });
 
       if (res.ok) {

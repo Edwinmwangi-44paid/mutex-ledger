@@ -60,7 +60,8 @@ async def chat_with_coin_ai(
 ):
     """Interactive AI chat endpoint answering market, entry, and sentiment queries for the coin using Gemini AI."""
     msg = payload.get("message", "")
-    return await CryptoIntelligenceService.get_ai_chat_response(coin_id=coin_id, message=msg)
+    chat_history = payload.get("chat_history")
+    return await CryptoIntelligenceService.get_ai_chat_response(coin_id=coin_id, message=msg, chat_history=chat_history)
 
 
 @router.post("/entertainment/ai-chat")
@@ -68,7 +69,12 @@ async def chat_with_entertainment_ai(payload: dict):
     """Interactive Entertainment & Movie recommendations AI chat powered by Gemini AI."""
     msg = payload.get("message", "")
     media_context = payload.get("media_context")
-    reply = await GeminiAIService.chat_with_entertainment_ai(user_message=msg, media_context=media_context)
+    chat_history = payload.get("chat_history")
+    reply = await GeminiAIService.chat_with_entertainment_ai(
+        user_message=msg,
+        media_context=media_context,
+        chat_history=chat_history,
+    )
     return {
         "reply": reply,
         "message": msg,

@@ -57,6 +57,11 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
     setIsSendingChat(true);
 
     try {
+      const historyPayload = chatMessages.slice(-6).map((m) => ({
+        sender: m.sender,
+        text: m.text,
+      }));
+
       const res = await fetch(`${apiBase}/entertainment/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,6 +72,7 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
             year: selectedMedia.year,
             genre: selectedMedia.genre,
           } : null,
+          chat_history: historyPayload,
         }),
       });
 
