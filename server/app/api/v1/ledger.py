@@ -64,23 +64,3 @@ async def get_my_transactions(
     )
     res = await session.execute(stmt)
     return res.scalars().all()
-
-
-@router.get("/transactions", response_model=List[TransferResponse], summary="List recent global ledger transactions")
-async def get_recent_transactions(
-    limit: int = Query(50, ge=1, le=200),
-    session: AsyncSession = Depends(get_db_session),
-):
-    stmt = select(Transaction).order_by(desc(Transaction.created_at)).limit(limit)
-    res = await session.execute(stmt)
-    return res.scalars().all()
-
-
-@router.get("/entries", response_model=List[LedgerEntryResponse], summary="List recent ledger double entries")
-async def get_recent_ledger_entries(
-    limit: int = Query(50, ge=1, le=200),
-    session: AsyncSession = Depends(get_db_session),
-):
-    stmt = select(LedgerEntry).order_by(desc(LedgerEntry.id)).limit(limit)
-    res = await session.execute(stmt)
-    return res.scalars().all()

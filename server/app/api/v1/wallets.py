@@ -22,7 +22,6 @@ from app.schemas.ledger import (
     WalletResponse,
     WalletCreateRequest,
     LedgerEntryResponse,
-    DepositRequest,
     WithdrawRequest,
 )
 from app.services.ledger_service import LedgerService
@@ -106,79 +105,13 @@ async def transfer_funds(
         )
 
 
-@router.post(
-    "/deposit",
-    response_model=TransferResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Deposit funds into wallet",
-)
-async def deposit_funds(
-    payload: DepositRequest,
-    idempotency_key: str = Depends(validate_uuid4_header),
-):
-    """Credit funds directly to user's wallet with atomic double-entry ledger entry."""
-    try:
-        response = await LedgerService.execute_deposit(
-            wallet_id=payload.wallet_id,
-            amount=payload.amount,
-            idempotency_key=idempotency_key,
-            currency=payload.currency or "USD",
-        )
-        return response
-    except WalletNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Deposit failure: {str(e)}",
-        )
-
-
-@router.post(
-    "/withdraw",
-    response_model=TransferResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Withdraw funds from wallet to external destination",
-)
-async def withdraw_funds(
-    payload: WithdrawRequest,
-    idempotency_key: str = Depends(validate_uuid4_header),
+@router.get("/me", response_model=List[WalletResponse], summary="List current authenticated user's wallets")
+async def list_my_wallets(
     current_user: User = Depends(get_current_user),
-):
-    """Debit funds from user's wallet to external crypto address with atomic double-entry ledger entry."""
-    try:
-        response = await LedgerService.execute_withdraw(
-            wallet_id=payload.wallet_id,
-            amount=payload.amount,
-            idempotency_key=idempotency_key,
-            destination_address=payload.destination_address,
-            user_id=current_user.id,
-            currency=payload.currency or "USD",
-        )
-        return response
-    except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-    except WalletNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
-    except InsufficientFundsError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error_code": "INSUFFICIENT_FUNDS", "message": e.message},
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Withdrawal failure: {str(e)}",
-        )
-
-
-
-@router.get("", response_model=List[WalletResponse], summary="List all wallets")
-async def list_wallets(
-    limit: int = Query(50, ge=1, le=100),
     session: AsyncSession = Depends(get_db_session),
 ):
-    stmt = select(Wallet).order_by(Wallet.created_at.asc()).limit(limit)
+    """Retrieve only the wallets owned by the authenticated caller."""
+    stmt = select(Wallet).where(Wallet.user_id == current_user.id).order_by(Wallet.created_at.asc())
     res = await session.execute(stmt)
     return res.scalars().all()
 
@@ -186,9 +119,10 @@ async def list_wallets(
 @router.get("/{wallet_id}", response_model=WalletResponse, summary="Get wallet by ID")
 async def get_wallet(
     wallet_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    stmt = select(Wallet).where(Wallet.id == wallet_id)
+    stmt = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id)
     res = await session.execute(stmt)
     wallet = res.scalars().first()
     if not wallet:
@@ -196,29 +130,19 @@ async def get_wallet(
     return wallet
 
 
-@router.post("", response_model=WalletResponse, status_code=status.HTTP_201_CREATED, summary="Create new wallet")
-async def create_wallet(
-    req: WalletCreateRequest,
-    session: AsyncSession = Depends(get_db_session),
-):
-    wallet = Wallet(
-        id=uuid.uuid4(),
-        user_id=req.user_id or uuid.uuid4(),
-        currency=req.currency.upper(),
-        balance=req.initial_balance,
-    )
-    session.add(wallet)
-    await session.commit()
-    await session.refresh(wallet)
-    return wallet
-
-
 @router.get("/{wallet_id}/entries", response_model=List[LedgerEntryResponse], summary="Get double-entry audit records")
 async def get_wallet_entries(
     wallet_id: uuid.UUID,
     limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    # Verify wallet belongs to authenticated user
+    w_stmt = select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == current_user.id)
+    w_res = await session.execute(w_stmt)
+    if not w_res.scalars().first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+
     stmt = (
         select(LedgerEntry)
         .where(LedgerEntry.wallet_id == wallet_id)
