@@ -80,6 +80,23 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
+        
+        # If Supabase credentials are provided, construct Supabase PostgreSQL pooler URL
+        if self.SUPABASE_URL and self.SUPABASE_DB_PASSWORD:
+            import urllib.parse
+            import re
+            
+            # Extract project ref from URL (e.g. https://xfeasbskpnoohtypnpls.supabase.co -> xfeasbskpnoohtypnpls)
+            match = re.search(r"https?://([^.]+)\.supabase\.co", self.SUPABASE_URL)
+            project_ref = match.group(1) if match else "xfeasbskpnoohtypnpls"
+            encoded_password = urllib.parse.quote_plus(self.SUPABASE_DB_PASSWORD)
+            
+            # Check if custom pooler host is provided, otherwise default to eu-central-1 pooler
+            pooler_host = os.getenv("SUPABASE_POOLER_HOST", "aws-0-eu-central-1.pooler.supabase.com")
+            pooler_port = os.getenv("SUPABASE_POOLER_PORT", "6543")
+            
+            return f"postgresql+asyncpg://postgres.{project_ref}:{encoded_password}@{pooler_host}:{pooler_port}/postgres"
+
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     def get_redis_url(self) -> str:
