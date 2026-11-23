@@ -171,9 +171,78 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
 
   if (loading) {
     return (
-      <div className="py-24 text-center space-y-4">
-        <div className="w-10 h-10 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-gray-400">Loading cinematic discovery hub...</p>
+      <div className="space-y-8 pb-12 animate-pulse">
+        {/* Skeleton Top Search & Filter Bar */}
+        <div className="rounded-2xl micro-card p-4 border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-3.5 backdrop-blur-md">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="h-10 rounded-xl bg-gray-200 dark:bg-white/[0.06] flex-1" />
+            <div className="h-10 w-64 rounded-xl bg-gray-200 dark:bg-white/[0.06]" />
+          </div>
+          <div className="flex items-center gap-2 overflow-hidden pt-1">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-7 w-20 rounded-xl bg-gray-200 dark:bg-white/[0.05] shrink-0" />
+            ))}
+          </div>
+        </div>
+
+        {/* Skeleton Hero Spotlight Banner */}
+        <div className="relative rounded-3xl overflow-hidden min-h-[460px] p-6 md:p-12 micro-card border border-black/[0.08] dark:border-white/[0.08] bg-gray-200 dark:bg-white/[0.03] flex items-end">
+          <div className="w-full max-w-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-16 rounded-md bg-gray-300 dark:bg-white/10" />
+              <div className="h-5 w-12 rounded-md bg-gray-300 dark:bg-white/10" />
+              <div className="h-5 w-12 rounded-md bg-gray-300 dark:bg-white/10" />
+            </div>
+            <div className="h-10 w-3/4 rounded-xl bg-gray-300 dark:bg-white/10" />
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-gray-300 dark:bg-white/10" />
+              <div className="h-4 w-5/6 rounded bg-gray-300 dark:bg-white/10" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <div className="h-10 w-36 rounded-xl bg-gray-300 dark:bg-white/10" />
+              <div className="h-10 w-32 rounded-xl bg-gray-300 dark:bg-white/10" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton Trending This Week Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-3 w-20 rounded bg-gray-200 dark:bg-white/[0.05]" />
+              <div className="h-6 w-48 rounded-lg bg-gray-200 dark:bg-white/[0.08]" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="space-y-2.5">
+                <div className="aspect-[2/3] rounded-2xl bg-gray-200 dark:bg-white/[0.05]" />
+                <div className="h-3.5 w-4/5 rounded bg-gray-200 dark:bg-white/[0.06]" />
+                <div className="h-3 w-1/2 rounded bg-gray-200 dark:bg-white/[0.04]" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Skeleton Popular TV Series Section */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-white/[0.05]" />
+            <div className="h-6 w-52 rounded-lg bg-gray-200 dark:bg-white/[0.08]" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="p-4 rounded-2xl micro-card border border-black/[0.08] dark:border-[#212736] flex gap-4 items-center">
+                <div className="w-20 h-28 rounded-xl bg-gray-200 dark:bg-white/[0.05] shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-1/3 rounded bg-gray-200 dark:bg-white/[0.06]" />
+                  <div className="h-5 w-2/3 rounded bg-gray-200 dark:bg-white/[0.08]" />
+                  <div className="h-3 w-full rounded bg-gray-200 dark:bg-white/[0.04]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
