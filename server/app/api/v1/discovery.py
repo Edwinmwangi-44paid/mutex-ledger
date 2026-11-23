@@ -36,6 +36,7 @@ async def global_omni_search(q: str = Query(..., min_length=1), session: AsyncSe
     ]
 
     # 2. Entertainment Results
+    ent_search_results = await EntertainmentService.search_media(query)
     entertainment_matches = [
         {
             "category": "entertainment",
@@ -46,7 +47,7 @@ async def global_omni_search(q: str = Query(..., min_length=1), session: AsyncSe
             "badge": "Movie" if m["type"] == "movie" else "TV Series",
             "route": f"/entertainment/{m['id']}",
         }
-        for m in EntertainmentService.search_media(query)
+        for m in ent_search_results
     ]
 
     # 3. Sports Results
@@ -93,7 +94,7 @@ async def get_discovery_feed():
     Combines live and upcoming real sports clashes, live crypto movers, and blockbuster entertainment releases.
     """
     crypto_ov = await CryptoIntelligenceService.get_global_market_overview()
-    ent_hub = EntertainmentService.get_entertainment_hub()
+    ent_hub = await EntertainmentService.get_entertainment_hub()
 
     # Fetch live/upcoming sports from real external provider
     ext_fixtures = await SportsDataService.fetch_external_live_data()

@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # Finnhub Market Data API Integration
     FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "dbpjv1hr01qr0r9nu7dgdbpjv1hr01qr0r9nu7e0")
 
+    # FXRatesAPI Real-Time Institutional Forex & Commodities Integration
+    FXRATES_API_KEY: str | None = os.getenv("FXRATES_API_KEY", None)
+
+    # TMDB (The Movie Database) Integration
+    TMDB_API_KEY: str = os.getenv("TMDB_API_KEY", "0a85f8dd4a9156a2d4b8a650bd850d1d")
+
     # Gemini AI Integration (read strictly from environment)
     GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY", None)
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")

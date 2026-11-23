@@ -88,13 +88,13 @@ async def chat_with_entertainment_ai(payload: dict):
 @router.get("/entertainment/hub")
 async def get_entertainment_hub():
     """Returns featured movie hero, trending carousel, movies, series, and streaming partners."""
-    return EntertainmentService.get_entertainment_hub()
+    return await EntertainmentService.get_entertainment_hub()
 
 
 @router.get("/entertainment/media/{media_id}")
 async def get_media_details(media_id: str):
     """Returns complete title details, synopsis, cast, director, and authorized streaming providers."""
-    details = EntertainmentService.get_media_details(media_id)
+    details = await EntertainmentService.get_media_details(media_id)
     if not details:
         raise HTTPException(status_code=404, detail="Entertainment media title not found")
     return details
@@ -103,5 +103,5 @@ async def get_media_details(media_id: str):
 @router.get("/entertainment/search")
 async def search_entertainment(q: str = Query(..., min_length=1)):
     """Search movies, series, genres, and directors."""
-    return EntertainmentService.search_media(q)
+    return await EntertainmentService.search_media(q)
 

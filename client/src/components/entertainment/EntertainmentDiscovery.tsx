@@ -13,6 +13,10 @@ import {
   Bot,
   User,
   Send,
+  Search,
+  Filter,
+  Clapperboard,
+  Loader2,
 } from 'lucide-react';
 
 interface EntertainmentDiscoveryProps {
@@ -23,6 +27,13 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
   const [hub, setHub] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<any>(null);
+
+  // Search & Filtering State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedType, setSelectedType] = useState<'all' | 'movie' | 'series'>('all');
+  const [selectedGenre, setSelectedGenre] = useState<string>('All');
 
   // Gemini AI Movie Recommender & Critic Chatbot state
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -120,6 +131,32 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
     }
   };
 
+  // Live Search Effect with Debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`${apiBase}/entertainment/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, apiBase]);
+
   const handleOpenDetails = async (id: string) => {
     try {
       const res = await fetch(`${apiBase}/entertainment/media/${id}`);
@@ -144,12 +181,169 @@ export const EntertainmentDiscovery: React.FC<EntertainmentDiscoveryProps> = ({ 
   if (!hub) return null;
 
   const hero = hub.hero_featured;
-  const trending = hub.trending_this_week || [];
-  // popular movies available in hub
-const series = hub.popular_series || [];
+  const rawTrending = hub.trending_this_week || [];
+  const rawPopularMovies = hub.popular_movies || [];
+  const rawSeries = hub.popular_series || [];
+
+  // Client-side filtering across categories and genres
+  const filterMediaList = (list: any[]) => {
+    return list.filter((item: any) => {
+      // Type filter
+      if (selectedType === 'movie' && item.type !== 'movie') return false;
+      if (selectedType === 'series' && item.type !== 'series') return false;
+      // Genre filter
+      if (selectedGenre !== 'All' && !item.genres?.some((g: string) => g.toLowerCase() === selectedGenre.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const trending = filterMediaList(rawTrending);
+  const popularMovies = filterMediaList(rawPopularMovies);
+  const series = filterMediaList(rawSeries);
+  const displayedSearchResults = searchResults ? filterMediaList(searchResults) : null;
+  const allGenres = hub.genres || ['All', 'Action', 'Sci-Fi', 'Drama', 'Comedy', 'Thriller', 'Horror', 'Adventure', 'Animation'];
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 pb-12">
+      {/* Live TMDB Search & Category Filter Navigation Bar */}
+      <div className="rounded-2xl micro-card p-4 border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-3.5 backdrop-blur-md">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Live Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search movies, TV series, actors, or genres in live TMDB catalog..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-rose-500 transition-all"
+            />
+            {isSearching ? (
+              <Loader2 className="w-4 h-4 text-rose-500 absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin" />
+            ) : searchQuery ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Type Segment Filter: All / Movies / Series */}
+          <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl shrink-0">
+            {[
+              { id: 'all', label: 'All Titles', icon: Clapperboard },
+              { id: 'movie', label: 'Movies', icon: Film },
+              { id: 'series', label: 'TV Series', icon: Tv },
+            ].map((t) => {
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedType(t.id as any)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    selectedType === t.id
+                      ? 'bg-rose-600 text-white shadow-sm font-bold'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Horizontal Genre Pill Strip */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pr-1 shrink-0">
+            <Filter className="w-3 h-3" />
+            <span>Genre:</span>
+          </div>
+          {allGenres.map((g: string) => (
+            <button
+              key={g}
+              onClick={() => setSelectedGenre(g)}
+              className={`whitespace-nowrap px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                selectedGenre.toLowerCase() === g.toLowerCase()
+                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold'
+                  : 'bg-black/[0.02] dark:bg-white/[0.03] text-gray-600 dark:text-gray-400 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.05] dark:border-white/[0.05]'
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* SEARCH RESULTS VIEW (When query is active) */}
+      {searchQuery.trim() ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white flex items-center gap-2">
+              <span>Search Results for "{searchQuery}"</span>
+              {displayedSearchResults && (
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                  {displayedSearchResults.length} found
+                </span>
+              )}
+            </h2>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-xs text-rose-500 hover:underline"
+            >
+              Clear Search
+            </button>
+          </div>
+
+          {displayedSearchResults && displayedSearchResults.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {displayedSearchResults.map((item: any) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleOpenDetails(item.id)}
+                  className="group cursor-pointer space-y-2 relative"
+                >
+                  <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-black/[0.04] dark:bg-[#161B26] border border-black/[0.08] dark:border-[#232A3B] group-hover:border-rose-500/50 shadow-md transition-all group-hover:scale-[1.03]">
+                    <img
+                      src={item.poster}
+                      alt={item.title}
+                      className="w-full h-full object-cover object-center group-hover:brightness-105 transition-all"
+                    />
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      <span>{item.rating}</span>
+                    </div>
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-mono uppercase font-bold text-white">
+                      {item.type}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors truncate">
+                      {item.title}
+                    </h4>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <span>{item.year}</span>
+                      <span>•</span>
+                      <span>{item.genres?.[0] || 'Media'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !isSearching ? (
+            <div className="py-12 text-center text-xs text-gray-400">
+              No titles found matching "{searchQuery}". Try searching for another movie, TV show, or actor.
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <>
       {/* Cinematic Hero Spotlight Banner (Inspired by Cinestream) - Micro-1 Polished */}
       {hero && (
         <div className="relative rounded-3xl overflow-hidden min-h-[460px] flex items-end p-6 md:p-12 micro-card border border-black/[0.08] dark:border-white/[0.08] shadow-2xl group">
@@ -256,46 +450,96 @@ const series = hub.popular_series || [];
       </div>
 
       {/* Television Series & Shows */}
-      <div className="space-y-4">
-        <div className="space-y-0.5">
-          <div className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Tv className="w-3.5 h-3.5" />
-            <span>Critically Acclaimed</span>
+      {series.length > 0 && (
+        <div className="space-y-4">
+          <div className="space-y-0.5">
+            <div className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Tv className="w-3.5 h-3.5" />
+              <span>Critically Acclaimed</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-black text-gray-950 dark:text-white">Popular Television Series</h2>
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-gray-950 dark:text-white">Popular Television Series</h2>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {series.map((item: any) => (
-            <div
-              key={item.id}
-              onClick={() => handleOpenDetails(item.id)}
-              className="p-4 rounded-2xl micro-card border border-black/[0.08] dark:border-[#212736] hover:border-cyan-500/40 transition-all cursor-pointer flex gap-4 items-center group shadow-sm"
-            >
-              <img
-                src={item.poster}
-                alt={item.title}
-                className="w-20 h-28 rounded-xl object-cover shrink-0 shadow-sm"
-              />
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase">
-                    {item.seasons_count} Seasons
-                  </span>
-                  <div className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400 font-semibold">
-                    <Star className="w-3 h-3 fill-amber-500 dark:fill-amber-400" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {series.map((item: any) => (
+              <div
+                key={item.id}
+                onClick={() => handleOpenDetails(item.id)}
+                className="p-4 rounded-2xl micro-card border border-black/[0.08] dark:border-[#212736] hover:border-cyan-500/40 transition-all cursor-pointer flex gap-4 items-center group shadow-sm"
+              >
+                <img
+                  src={item.poster}
+                  alt={item.title}
+                  className="w-20 h-28 rounded-xl object-cover shrink-0 shadow-sm"
+                />
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase">
+                      {item.seasons_count} Seasons
+                    </span>
+                    <div className="flex items-center gap-1 text-[11px] text-amber-500 dark:text-amber-400 font-semibold">
+                      <Star className="w-3 h-3 fill-amber-500 dark:fill-amber-400" />
+                      <span>{item.rating}</span>
+                    </div>
+                  </div>
+                  <h3 className="text-base font-bold text-gray-950 dark:text-white group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition-colors truncate">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{item.synopsis}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top Rated & Popular Movies Grid */}
+      {popularMovies.length > 0 && (
+        <div className="space-y-4">
+          <div className="space-y-0.5">
+            <div className="text-[11px] font-bold text-rose-500 uppercase tracking-widest flex items-center gap-1.5">
+              <Film className="w-3.5 h-3.5" />
+              <span>Must Watch</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-black text-gray-950 dark:text-white">Top Rated Movies</h2>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {popularMovies.map((item: any) => (
+              <div
+                key={item.id}
+                onClick={() => handleOpenDetails(item.id)}
+                className="group cursor-pointer space-y-2 relative"
+              >
+                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-black/[0.04] dark:bg-[#161B26] border border-black/[0.08] dark:border-[#232A3B] group-hover:border-rose-500/50 shadow-md transition-all group-hover:scale-[1.03]">
+                  <img
+                    src={item.poster}
+                    alt={item.title}
+                    className="w-full h-full object-cover object-center group-hover:brightness-105 transition-all"
+                  />
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-400" />
                     <span>{item.rating}</span>
                   </div>
                 </div>
-                <h3 className="text-base font-bold text-gray-950 dark:text-white group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition-colors truncate">
-                  {item.title}
-                </h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{item.synopsis}</p>
+
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors truncate">
+                    {item.title}
+                  </h4>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    <span>{item.year}</span>
+                    <span>•</span>
+                    <span>{item.genres?.[0] || 'Movie'}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+      </>
+      )}
 
       {/* MEDIA DETAILS MODAL (STREAMING PROVIDERS & CAST) */}
       {selectedMedia && (

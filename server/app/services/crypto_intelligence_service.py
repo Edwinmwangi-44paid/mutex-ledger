@@ -27,11 +27,13 @@ class CryptoIntelligenceService:
     _INITIALIZE_LOCK = asyncio.Lock()
     _SEMAPHORE = asyncio.Semaphore(5)  # Max 5 parallel outbound requests to Finnhub
     _QUOTE_CACHE: Dict[str, Tuple[float, float, float]] = {}  # ticker -> (price, change_24h, timestamp)
-    _QUOTE_CACHE_TTL: int = 30  # 30 seconds TTL
+    _QUOTE_CACHE_TTL: int = 15  # 15 seconds TTL
     _BINANCE_ALL_TICKERS: Dict[str, Tuple[float, float, float]] = {}  # symbol -> (price, change_24h, timestamp)
-    _BINANCE_CACHE_TTL: int = 20  # 20 seconds TTL
+    _BINANCE_CACHE_TTL: int = 10  # 10 seconds TTL
     _FOREX_RATES_CACHE: Dict[str, float] = {}
     _FOREX_CACHE_TIME: float = 0.0
+    _COMMODITY_LIVE_CACHE: Dict[str, Tuple[float, float, float]] = {} # symbol -> (price, change_24h, timestamp)
+    _COMMODITY_CACHE_TTL: int = 10  # 10 seconds TTL
 
     # Curated featured base list (preserves verified descriptions, ATHs, market caps, logos)
     CURATED_FEATURED: List[Dict[str, Any]] = [
@@ -77,11 +79,12 @@ class CryptoIntelligenceService:
         {"id": "usd-zar", "symbol": "USD/ZAR", "finnhub_symbol": "USD_ZAR", "forex_base": "USD", "forex_quote": "ZAR", "category": "forex", "name": "US Dollar / South African Rand", "price": 17.24, "change_24h": 0.35, "market_cap": 0, "volume_24h": 45000000000, "circulating_supply": 0, "all_time_high": 19.92, "rank": 9, "logo": "https://flagcdn.com/w80/za.png", "description": "Liquid emerging market currency tied to gold and platinum commodity cycles."},
         {"id": "usd-cnh", "symbol": "USD/CNH", "finnhub_symbol": "USD_CNH", "forex_base": "USD", "forex_quote": "CNH", "category": "forex", "name": "US Dollar / Offshore Chinese Yuan", "price": 6.6680, "change_24h": 0.15, "market_cap": 0, "volume_24h": 180000000000, "circulating_supply": 0, "all_time_high": 7.3750, "rank": 10, "logo": "https://flagcdn.com/w80/cn.png", "description": "Offshore traded Renminbi reflecting global manufacturing and Chinese economic momentum."},
         # Commodities (Gold, Silver, Platinum in AUD, USD, EUR, GBP)
-        {"id": "gold-usd", "symbol": "XAU/USD", "finnhub_symbol": "XAU_USD", "forex_base": "XAU", "forex_quote": "USD", "category": "forex", "name": "Gold / US Dollar", "price": 2740.50, "change_24h": 0.45, "market_cap": 16000000000000, "volume_24h": 140000000000, "circulating_supply": 0, "all_time_high": 2790.15, "rank": 11, "logo": "https://flagcdn.com/w80/un.png", "description": "Gold spot bullion per troy ounce valued against the US Dollar."},
-        {"id": "gold-aud", "symbol": "XAU/AUD", "finnhub_symbol": "XAU_AUD", "forex_base": "XAU", "forex_quote": "AUD", "category": "forex", "name": "Gold / Australian Dollar", "price": 4078.96, "change_24h": 0.52, "market_cap": 16000000000000, "volume_24h": 35000000000, "circulating_supply": 0, "all_time_high": 4200.00, "rank": 12, "logo": "https://flagcdn.com/w80/au.png", "description": "Gold spot bullion per troy ounce valued in Australian Dollars."},
-        {"id": "gold-eur", "symbol": "XAU/EUR", "finnhub_symbol": "XAU_EUR", "forex_base": "XAU", "forex_quote": "EUR", "category": "forex", "name": "Gold / Euro", "price": 2497.28, "change_24h": 0.38, "market_cap": 16000000000000, "volume_24h": 42000000000, "circulating_supply": 0, "all_time_high": 2550.00, "rank": 13, "logo": "https://flagcdn.com/w80/eu.png", "description": "Gold spot bullion per troy ounce valued in Euros."},
-        {"id": "gold-gbp", "symbol": "XAU/GBP", "finnhub_symbol": "XAU_GBP", "forex_base": "XAU", "forex_quote": "GBP", "category": "forex", "name": "Gold / British Pound", "price": 2082.83, "change_24h": 0.41, "market_cap": 16000000000000, "volume_24h": 28000000000, "circulating_supply": 0, "all_time_high": 2150.00, "rank": 14, "logo": "https://flagcdn.com/w80/gb.png", "description": "Gold spot bullion per troy ounce valued in British Pounds."},
-        {"id": "silver-usd", "symbol": "XAG/USD", "finnhub_symbol": "XAG_USD", "forex_base": "XAG", "forex_quote": "USD", "category": "forex", "name": "Silver / US Dollar", "price": 31.85, "change_24h": -0.65, "market_cap": 1800000000000, "volume_24h": 25000000000, "circulating_supply": 0, "all_time_high": 49.80, "rank": 15, "logo": "https://flagcdn.com/w80/un.png", "description": "Silver spot bullion per troy ounce valued against the US Dollar."},
+        {"id": "gold-usd", "symbol": "XAU/USD", "finnhub_symbol": "XAU_USD", "forex_base": "XAU", "forex_quote": "USD", "category": "forex", "name": "Gold / US Dollar", "price": 3552.40, "change_24h": -2.25, "market_cap": 20500000000000, "volume_24h": 185000000000, "circulating_supply": 0, "all_time_high": 3652.80, "rank": 11, "logo": "https://flagcdn.com/w80/un.png", "description": "Gold spot bullion per troy ounce valued against the US Dollar."},
+        {"id": "gold-aud", "symbol": "XAU/AUD", "finnhub_symbol": "XAU_AUD", "forex_base": "XAU", "forex_quote": "AUD", "category": "forex", "name": "Gold / Australian Dollar", "price": 5328.60, "change_24h": -2.10, "market_cap": 20500000000000, "volume_24h": 45000000000, "circulating_supply": 0, "all_time_high": 5480.00, "rank": 12, "logo": "https://flagcdn.com/w80/au.png", "description": "Gold spot bullion per troy ounce valued in Australian Dollars."},
+        {"id": "gold-eur", "symbol": "XAU/EUR", "finnhub_symbol": "XAU_EUR", "forex_base": "XAU", "forex_quote": "EUR", "category": "forex", "name": "Gold / Euro", "price": 3235.80, "change_24h": -2.35, "market_cap": 20500000000000, "volume_24h": 55000000000, "circulating_supply": 0, "all_time_high": 3320.00, "rank": 13, "logo": "https://flagcdn.com/w80/eu.png", "description": "Gold spot bullion per troy ounce valued in Euros."},
+        {"id": "gold-gbp", "symbol": "XAU/GBP", "finnhub_symbol": "XAU_GBP", "forex_base": "XAU", "forex_quote": "GBP", "category": "forex", "name": "Gold / British Pound", "price": 2709.70, "change_24h": -2.18, "market_cap": 20500000000000, "volume_24h": 38000000000, "circulating_supply": 0, "all_time_high": 2785.00, "rank": 14, "logo": "https://flagcdn.com/w80/gb.png", "description": "Gold spot bullion per troy ounce valued in British Pounds."},
+        {"id": "silver-usd", "symbol": "XAG/USD", "finnhub_symbol": "XAG_USD", "forex_base": "XAG", "forex_quote": "USD", "category": "forex", "name": "Silver / US Dollar", "price": 42.22, "change_24h": -1.85, "market_cap": 2400000000000, "volume_24h": 35000000000, "circulating_supply": 0, "all_time_high": 49.80, "rank": 15, "logo": "https://flagcdn.com/w80/un.png", "description": "Silver spot bullion per troy ounce valued against the US Dollar."},
+        {"id": "platinum-usd", "symbol": "XPT/USD", "finnhub_symbol": "XPT_USD", "forex_base": "XPT", "forex_quote": "USD", "category": "forex", "name": "Platinum / US Dollar", "price": 1307.00, "change_24h": -2.75, "market_cap": 310000000000, "volume_24h": 12000000000, "circulating_supply": 0, "all_time_high": 2290.00, "rank": 16, "logo": "https://flagcdn.com/w80/un.png", "description": "Platinum spot bullion per troy ounce valued against the US Dollar."},
     ]
 
     ASSETS_DATABASE: List[Dict[str, Any]] = []
@@ -192,16 +195,16 @@ class CryptoIntelligenceService:
                     # Calculate initial benchmark price for commodities or currency crosses
                     initial_price = 1.0
                     if base_curr == "XAU":
-                        # Gold spot base ~$2740 USD
-                        gold_rates = {"USD": 2740.50, "AUD": 4078.96, "EUR": 2497.28, "GBP": 2082.83, "CAD": 3924.80, "CHF": 2310.20, "JPY": 436720.0, "NZD": 4991.0}
-                        initial_price = gold_rates.get(quote_curr, 2740.50)
+                        # Gold spot base ~$3552.40 USD
+                        gold_rates = {"USD": 3552.40, "AUD": 5328.60, "EUR": 3235.80, "GBP": 2709.70, "CAD": 5085.0, "CHF": 2995.0, "JPY": 565500.0, "NZD": 6470.0}
+                        initial_price = gold_rates.get(quote_curr, 3552.40)
                     elif base_curr == "XAG":
-                        # Silver spot base ~$31.85 USD
-                        silver_rates = {"USD": 31.85, "AUD": 47.40, "EUR": 29.02, "GBP": 24.20, "CAD": 45.60, "CHF": 26.85, "JPY": 5075.0, "NZD": 58.0}
-                        initial_price = silver_rates.get(quote_curr, 31.85)
+                        # Silver spot base ~$42.22 USD
+                        silver_rates = {"USD": 42.22, "AUD": 63.30, "EUR": 38.45, "GBP": 32.20, "CAD": 60.40, "CHF": 35.60, "JPY": 6720.0, "NZD": 76.90}
+                        initial_price = silver_rates.get(quote_curr, 42.22)
                     elif base_curr == "XPT":
-                        # Platinum spot base ~$965 USD
-                        initial_price = 965.00
+                        # Platinum spot base ~$1307 USD
+                        initial_price = 1307.00
 
                     db.append({
                         "id": clean_id,
@@ -275,11 +278,49 @@ class CryptoIntelligenceService:
         logger.info(f"Loaded Multi-Market Catalog: {len(cls.ASSETS_DATABASE)} total accessible pairs.")
 
     @classmethod
+    async def _update_commodity_tickers(cls, client: httpx.AsyncClient):
+        """Fetches live streaming quotes for Spot Gold (PAXG 1:1 physical troy ounce gold) and commodities."""
+        now = time.time()
+        # Gold spot ticker via PAXG/USDT (24/7 ticking)
+        if "XAU_USD" not in cls._COMMODITY_LIVE_CACHE or (now - cls._COMMODITY_LIVE_CACHE["XAU_USD"][2]) > cls._COMMODITY_CACHE_TTL:
+            try:
+                res = await client.get("https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT", timeout=3.0)
+                if res.status_code == 200:
+                    d = res.json()
+                    p = float(d.get("lastPrice", 0))
+                    ch = float(d.get("priceChangePercent", 0))
+                    if p > 1000:
+                        cls._COMMODITY_LIVE_CACHE["XAU_USD"] = (p, round(ch, 2), now)
+            except Exception as e:
+                logger.debug(f"Live Gold PAXGUSDT ticker fetch error: {e}")
+
+    @classmethod
     async def _update_forex_rates(cls, client: httpx.AsyncClient):
         now = time.time()
         if cls._FOREX_RATES_CACHE and (now - cls._FOREX_CACHE_TIME) < 120:
             return cls._FOREX_RATES_CACHE
 
+        settings = get_settings()
+        fx_api_key = getattr(settings, "FXRATES_API_KEY", None)
+
+        # 1. Primary Priority: FXRatesAPI (Full live institutional coverage including metals & 170+ fiats)
+        if fx_api_key:
+            try:
+                res = await client.get(
+                    f"https://api.fxratesapi.com/latest?api_key={fx_api_key}&base=USD",
+                    timeout=4.0,
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    rates = data.get("rates", {})
+                    if rates:
+                        cls._FOREX_RATES_CACHE = rates
+                        cls._FOREX_CACHE_TIME = now
+                        return cls._FOREX_RATES_CACHE
+            except Exception as e:
+                logger.debug(f"FXRatesAPI fetch error: {e}")
+
+        # 2. Keyless Institutional Fallback: Frankfurter + Open ER-API
         try:
             res = await client.get("https://open.er-api.com/v6/latest/USD", timeout=3.5)
             if res.status_code == 200:
@@ -287,7 +328,18 @@ class CryptoIntelligenceService:
                 cls._FOREX_RATES_CACHE = data.get("rates", {})
                 cls._FOREX_CACHE_TIME = now
         except Exception as e:
-            logger.debug(f"Forex rates fetch error: {e}")
+            logger.debug(f"Open ER-API fetch error: {e}")
+
+        # 3. If Frankfurter is needed for high-reliability ECB major pairs
+        try:
+            frank_res = await client.get("https://api.frankfurter.dev/v1/latest?base=USD", timeout=3.5)
+            if frank_res.status_code == 200:
+                frank_data = frank_res.json()
+                frank_rates = frank_data.get("rates", {})
+                if frank_rates:
+                    cls._FOREX_RATES_CACHE = {**cls._FOREX_RATES_CACHE, **frank_rates}
+        except Exception as e:
+            logger.debug(f"Frankfurter fetch error: {e}")
 
         return cls._FOREX_RATES_CACHE
 
@@ -365,9 +417,10 @@ class CryptoIntelligenceService:
         async with httpx.AsyncClient() as client:
             tasks = []
 
-            # 1. Update Forex rates
+            # 1. Update Forex rates and Live Commodities
             if any(a.get("category") == "forex" for a in target_assets):
                 tasks.append(cls._update_forex_rates(client))
+                tasks.append(cls._update_commodity_tickers(client))
 
             # 2. Update Binance crypto tickers (up to 8 in parallel)
             if binance_symbols_to_fetch:
@@ -415,13 +468,37 @@ class CryptoIntelligenceService:
                 
                 # Handle Gold (XAU), Silver (XAG), Platinum (XPT)
                 if base == "XAU":
-                    gold_usd = 2740.50
-                    q_rate = rates.get(quote, 1.0)
-                    a["price"] = round(gold_usd * q_rate, 2)
+                    # Check live 24/7 ticking gold price from Binance PAXG first
+                    if "XAU_USD" in cls._COMMODITY_LIVE_CACHE:
+                        gold_usd, gold_ch, _ = cls._COMMODITY_LIVE_CACHE["XAU_USD"]
+                    else:
+                        # Fallback to FXRatesAPI or spot baseline
+                        raw_xau = rates.get("XAU") if rates else None
+                        if raw_xau and isinstance(raw_xau, (int, float)) and raw_xau > 0:
+                            gold_usd = 1.0 / raw_xau if raw_xau < 1.0 else float(raw_xau)
+                        else:
+                            gold_usd = 3552.40
+                        gold_ch = a.get("change_24h", -0.35)
+
+                    q_rate = rates.get(quote, 1.0) if (rates and quote != "USD") else 1.0
+                    a["price"] = round(gold_usd * (q_rate if q_rate > 0 else 1.0), 2)
+                    a["change_24h"] = gold_ch
                 elif base == "XAG":
-                    silver_usd = 31.85
-                    q_rate = rates.get(quote, 1.0)
-                    a["price"] = round(silver_usd * q_rate, 2)
+                    raw_xag = rates.get("XAG")
+                    if raw_xag and isinstance(raw_xag, (int, float)) and raw_xag > 0:
+                        silver_usd = 1.0 / raw_xag if raw_xag < 1.0 else float(raw_xag)
+                    else:
+                        silver_usd = 42.22
+                    q_rate = rates.get(quote, 1.0) if quote != "USD" else 1.0
+                    a["price"] = round(silver_usd * (q_rate if q_rate > 0 else 1.0), 2)
+                elif base == "XPT":
+                    raw_xpt = rates.get("XPT")
+                    if raw_xpt and isinstance(raw_xpt, (int, float)) and raw_xpt > 0:
+                        plat_usd = 1.0 / raw_xpt if raw_xpt < 1.0 else float(raw_xpt)
+                    else:
+                        plat_usd = 1307.00
+                    q_rate = rates.get(quote, 1.0) if quote != "USD" else 1.0
+                    a["price"] = round(plat_usd * (q_rate if q_rate > 0 else 1.0), 2)
                 elif base and quote:
                     if base == "USD" and quote in rates:
                         a["price"] = round(rates[quote], 4 if rates[quote] < 10 else 2)

@@ -53,6 +53,25 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
     }
   });
 
+  const leftColRef = useRef<HTMLDivElement>(null);
+  const [rightColHeight, setRightColHeight] = useState<number | undefined>(undefined);
+
+  // Sync right asset container height to left column's exact natural height
+  useEffect(() => {
+    if (!leftColRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          // Sync height matching left column exactly
+          setRightColHeight(Math.round(entry.target.getBoundingClientRect().height));
+        }
+      }
+    });
+
+    observer.observe(leftColRef.current);
+    return () => observer.disconnect();
+  }, [selectedCoin, aiInsight, loadingInsight, chartData]);
+
   const finnhubClientRef = useRef<FinnhubClient | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -79,6 +98,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
         'AMZN',
         'GOOGL',
         'TSLA',
+        'BINANCE:PAXGUSDT',
       ],
       onTrade: (trade: FinnhubTrade) => {
         handleIncomingTrade(trade);
@@ -87,10 +107,47 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
 
     finnhubClientRef.current = client;
 
+    // Fast-polling interval for live forex & commodity quotes (every 8 seconds)
+    const quotePollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`${apiBase}/crypto/coins?page=1&limit=16${activeTab !== 'all' ? `&category=${activeTab}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          const refreshedItems = data.items || [];
+          setCoins((prevCoins) => {
+            const priceMap = new Map<string, any>(refreshedItems.map((item: any) => [item.id, item]));
+            return prevCoins.map((coin) => {
+              const fresh = priceMap.get(coin.id);
+              if (fresh) {
+                return {
+                  ...coin,
+                  price: fresh.price,
+                  change_24h: fresh.change_24h,
+                };
+              }
+              return coin;
+            });
+          });
+
+          setSelectedCoin((prev: any) => {
+            if (!prev) return prev;
+            const updated = refreshedItems.find((item: any) => item.id === prev.id);
+            if (updated && (updated.price !== prev.price || updated.change_24h !== prev.change_24h)) {
+              return { ...prev, price: updated.price, change_24h: updated.change_24h };
+            }
+            return prev;
+          });
+        }
+      } catch {
+        /* ignore polling errors */
+      }
+    }, 8000);
+
     return () => {
+      clearInterval(quotePollInterval);
       client.disconnect();
     };
-  }, []);
+  }, [activeTab]);
 
   const handleIncomingTrade = (trade: FinnhubTrade) => {
     const symbolMap: Record<string, string> = {
@@ -110,6 +167,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
       'AMZN': 'amzn',
       'GOOGL': 'googl',
       'TSLA': 'tsla',
+      'BINANCE:PAXGUSDT': 'gold-usd',
     };
 
     const assetId = symbolMap[trade.s];
@@ -250,7 +308,7 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
             TradingView Market Intelligence
           </h1>
           <p className="text-sm md:text-base text-gray-600 dark:text-[#94A3B8] leading-relaxed">
-            Real-time global capitalization, Bitcoin dominance, interactive multi-timeframe analytics, and transparent on-chain coin metrics.
+            Real-time market quotes across Crypto, US Equities, and Forex, institutional ICT CIT order flow analytics, live multi-timeframe charts, and transparent asset metrics.
           </p>
         </div>
       </div>
@@ -344,10 +402,13 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
           )}
 
           {/* Main Dual Grid: Interactive Chart + Paginated Infinite-Scroll Assets */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Interactive Asset Explorer & Live Chart (7 cols) */}
             {selectedCoin && (
-              <div className="lg:col-span-7 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 space-y-6 shadow-sm flex flex-col justify-between">
+              <div
+                ref={leftColRef}
+                className="lg:col-span-7 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-6 space-y-6 shadow-sm flex flex-col"
+              >
                 {/* Coin Header */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -382,9 +443,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                       })}
                     </div>
                     <div
-                      className={`text-xs font-bold flex items-center justify-end gap-1 font-mono ${
-                        selectedCoin.change_24h >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                      }`}
+                      className={`text-xs font-bold flex items-center justify-end gap-1 font-mono ${selectedCoin.change_24h >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                        }`}
                     >
                       {selectedCoin.change_24h >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                       <span>{selectedCoin.change_24h}% (24h)</span>
@@ -398,22 +458,20 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.06] rounded-xl">
                     <button
                       onClick={() => setChartType('candlestick')}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        chartType === 'candlestick'
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${chartType === 'candlestick'
                           ? 'bg-[#3E4FFF] text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
-                      }`}
+                        }`}
                     >
                       <BarChart2 className="w-3.5 h-3.5" />
                       <span>Candlesticks</span>
                     </button>
                     <button
                       onClick={() => setChartType('line')}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        chartType === 'line'
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${chartType === 'line'
                           ? 'bg-[#3E4FFF] text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
-                      }`}
+                        }`}
                     >
                       <LineIcon className="w-3.5 h-3.5" />
                       <span>Line</span>
@@ -424,11 +482,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowIndicators((prev) => !prev)}
-                      className={`px-3 py-1 rounded-xl text-xs font-mono font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                        showIndicators
+                      className={`px-3 py-1 rounded-xl text-xs font-mono font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${showIndicators
                           ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'
                           : 'bg-black/[0.02] dark:bg-white/[0.02] text-gray-500 border-black/10 dark:border-white/10'
-                      }`}
+                        }`}
                     >
                       <Layers className="w-3 h-3" />
                       <span>SMA (7)</span>
@@ -441,11 +498,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                       <button
                         key={tf}
                         onClick={() => setTimeframe(tf)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold uppercase transition-all cursor-pointer ${
-                          timeframe === tf
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold uppercase transition-all cursor-pointer ${timeframe === tf
                             ? 'bg-[#3E4FFF] text-white shadow-sm'
                             : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
-                        }`}
+                          }`}
                       >
                         {tf}
                       </button>
@@ -844,8 +900,11 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
               </div>
             )}
 
-            {/* Right Column: Tracked Assets Table with Infinite Scroll (5 cols, full height matching left column) */}
-            <div className="lg:col-span-5 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-4 flex flex-col space-y-3 shadow-sm h-full min-h-[720px] max-h-[1050px]">
+            {/* Right Column: Tracked Assets Table with Infinite Scroll (5 cols, full height matching left column exactly) */}
+            <div
+              style={rightColHeight ? { height: `${rightColHeight}px` } : undefined}
+              className="lg:col-span-5 rounded-2xl micro-card border border-black/[0.08] dark:border-white/[0.08] p-4 flex flex-col space-y-3 shadow-sm min-h-[500px]"
+            >
               {/* Category Tabs: All / Crypto / Stocks / Forex */}
               <div className="flex items-center gap-1 p-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-xl shrink-0">
                 {[
@@ -857,11 +916,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      activeTab === tab.id
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === tab.id
                         ? 'bg-[#3E4FFF] text-white shadow-sm font-bold'
                         : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -892,11 +950,10 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                       key={`${coin.id}_${index}`}
                       ref={isLastItem ? lastElementRef : null}
                       onClick={() => setSelectedCoin(coin)}
-                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
-                        isSelected
+                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected
                           ? 'bg-[#3E4FFF]/10 border border-[#3E4FFF]/40 text-gray-950 dark:text-white shadow-sm'
                           : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent text-gray-700 dark:text-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <button
@@ -904,9 +961,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                           className="text-gray-400 hover:text-amber-400 transition-colors"
                         >
                           <Star
-                            className={`w-3.5 h-3.5 ${
-                              isWatched ? 'text-amber-400 fill-amber-400' : ''
-                            }`}
+                            className={`w-3.5 h-3.5 ${isWatched ? 'text-amber-400 fill-amber-400' : ''
+                              }`}
                           />
                         </button>
                         <img
@@ -936,9 +992,8 @@ export const CryptoIntelligenceHub: React.FC<CryptoIntelligenceHubProps> = ({ ap
                           })}
                         </div>
                         <div
-                          className={`text-[10px] font-semibold font-mono ${
-                            coin.change_24h >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                          }`}
+                          className={`text-[10px] font-semibold font-mono ${coin.change_24h >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                            }`}
                         >
                           {coin.change_24h >= 0 ? '+' : ''}
                           {coin.change_24h}%
