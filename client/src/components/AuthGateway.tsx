@@ -554,21 +554,6 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onAuthSuccess, apiBase
               </span>
               {!isLoading && <ArrowRight className="w-4 h-4" />}
             </button>
-
-            {mode === 'LOGIN' && (
-              <div className="pt-1 flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('agent.smith@mutex.core');
-                    setPassword('Password123!');
-                  }}
-                  className="text-[11px] text-gray-500 hover:text-[#3E4FFF] dark:hover:text-[#8D9BFF] transition-colors cursor-pointer"
-                >
-                  ⚡ Quick fill demo account (<span className="underline">agent.smith@mutex.core</span>)
-                </button>
-              </div>
-            )}
           </form>
 
           {/* Toggle between Login and Register */}
