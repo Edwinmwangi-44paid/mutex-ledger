@@ -119,12 +119,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Cross-Origin Resource Sharing (CORS) for Frontend Integration
+# Cross-Origin Resource Sharing (CORS) Configuration
+raw_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+cors_origins = raw_origins if raw_origins else ["http://localhost:5173", "http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 

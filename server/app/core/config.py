@@ -34,9 +34,15 @@ class Settings(BaseSettings):
     IDEMPOTENCY_LEASE_SECONDS: int = 300  # 5 minutes
     
     # JWT Authentication
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "PESAFLIP_SUPER_SECRET_CRYPTOGRAPHIC_KEY_2026")
+    JWT_SECRET: str = os.getenv("JWT_SECRET") or "PESAFLIP_SUPER_SECRET_CRYPTOGRAPHIC_KEY_2026"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
+
+    # Allowed CORS Origins (comma-separated string or parsed list)
+    ALLOWED_ORIGINS: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8000"
+    )
 
     # Fallback to in-memory mocks if Postgres/Redis cannot connect
     FALLBACK_IN_MEMORY: bool = True
