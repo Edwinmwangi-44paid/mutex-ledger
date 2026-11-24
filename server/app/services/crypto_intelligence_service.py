@@ -283,16 +283,22 @@ class CryptoIntelligenceService:
         now = time.time()
         # Gold spot ticker via PAXG/USDT (24/7 ticking)
         if "XAU_USD" not in cls._COMMODITY_LIVE_CACHE or (now - cls._COMMODITY_LIVE_CACHE["XAU_USD"][2]) > cls._COMMODITY_CACHE_TTL:
-            try:
-                res = await client.get("https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT", timeout=3.0)
-                if res.status_code == 200:
-                    d = res.json()
-                    p = float(d.get("lastPrice", 0))
-                    ch = float(d.get("priceChangePercent", 0))
-                    if p > 1000:
-                        cls._COMMODITY_LIVE_CACHE["XAU_USD"] = (p, round(ch, 2), now)
-            except Exception as e:
-                logger.debug(f"Live Gold PAXGUSDT ticker fetch error: {e}")
+            urls = [
+                "https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT",
+                "https://api.binance.us/api/v3/ticker/24hr?symbol=PAXGUSDT",
+            ]
+            for u in urls:
+                try:
+                    res = await client.get(u, timeout=3.0)
+                    if res.status_code == 200:
+                        d = res.json()
+                        p = float(d.get("lastPrice", 0))
+                        ch = float(d.get("priceChangePercent", 0))
+                        if p > 1000:
+                            cls._COMMODITY_LIVE_CACHE["XAU_USD"] = (p, round(ch, 2), now)
+                            break
+                except Exception as e:
+                    logger.debug(f"Live Gold PAXGUSDT ticker fetch error ({u}): {e}")
 
     @classmethod
     async def _update_forex_rates(cls, client: httpx.AsyncClient):
@@ -345,28 +351,76 @@ class CryptoIntelligenceService:
 
     @classmethod
     async def _update_binance_crypto_tickers(cls, client: httpx.AsyncClient, symbols: List[str]):
-        """Fetches live quotes for requested Binance crypto symbols directly."""
+        """Fetches live quotes for requested crypto symbols with automatic cloud-friendly failover (Binance.com -> Binance.US -> CoinGecko)."""
         now = time.time()
+        coingecko_map = {
+            "BTCUSDT": "bitcoin",
+            "ETHUSDT": "ethereum",
+            "SOLUSDT": "solana",
+            "XRPUSDT": "ripple",
+            "BNBUSDT": "binancecoin",
+            "DOGEUSDT": "dogecoin",
+            "ADAUSDT": "cardano",
+            "AVAXUSDT": "avalanche-2",
+            "LINKUSDT": "chainlink",
+            "SUIUSDT": "sui",
+            "SHIBUSDT": "shiba-inu",
+            "DOTUSDT": "polkadot",
+            "NEARUSDT": "near",
+            "UNIUSDT": "uniswap",
+            "LTCUSDT": "litecoin",
+            "PEPEUSDT": "pepe",
+            "WLDUSDT": "worldcoin-wld",
+        }
+
+        needed_symbols = []
         for sym in symbols:
             clean_sym = sym.replace("BINANCE:", "").replace("/", "")
             if clean_sym in cls._BINANCE_ALL_TICKERS:
                 p, ch, t = cls._BINANCE_ALL_TICKERS[clean_sym]
-                if now - t < cls._BINANCE_CACHE_TTL:
+                if now - t < cls._BINANCE_CACHE_TTL and p > 0:
                     continue
+            needed_symbols.append(clean_sym)
 
-            try:
-                res = await client.get(
-                    f"https://api.binance.com/api/v3/ticker/24hr?symbol={clean_sym}",
-                    timeout=3.0,
-                )
-                if res.status_code == 200:
-                    d = res.json()
-                    p = float(d.get("lastPrice", 0))
-                    ch = float(d.get("priceChangePercent", 0))
-                    if p > 0:
-                        cls._BINANCE_ALL_TICKERS[clean_sym] = (p, round(ch, 2), now)
-            except Exception as e:
-                logger.debug(f"Binance ticker fetch error for {clean_sym}: {e}")
+        if not needed_symbols:
+            return
+
+        for clean_sym in needed_symbols:
+            fetched = False
+            # 1. Try Binance Global, then Binance.US (works on cloud servers like Render)
+            endpoints = [
+                f"https://api.binance.com/api/v3/ticker/24hr?symbol={clean_sym}",
+                f"https://api.binance.us/api/v3/ticker/24hr?symbol={clean_sym}",
+            ]
+            for u in endpoints:
+                try:
+                    res = await client.get(u, timeout=2.5)
+                    if res.status_code == 200:
+                        d = res.json()
+                        p = float(d.get("lastPrice", 0))
+                        ch = float(d.get("priceChangePercent", 0))
+                        if p > 0:
+                            cls._BINANCE_ALL_TICKERS[clean_sym] = (p, round(ch, 2), now)
+                            fetched = True
+                            break
+                except Exception:
+                    pass
+
+            # 2. CoinGecko public fallback if Binance is geo-restricted or pair is blocked
+            if not fetched and clean_sym in coingecko_map:
+                cg_id = coingecko_map[clean_sym]
+                try:
+                    cg_url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd&include_24hr_change=true"
+                    cg_res = await client.get(cg_url, headers={"User-Agent": "PesaFlip/1.0"}, timeout=3.0)
+                    if cg_res.status_code == 200:
+                        data = cg_res.json()
+                        if cg_id in data and "usd" in data[cg_id]:
+                            p = float(data[cg_id]["usd"])
+                            ch = float(data[cg_id].get("usd_24h_change", 0.0))
+                            if p > 0:
+                                cls._BINANCE_ALL_TICKERS[clean_sym] = (p, round(ch, 2), now)
+                except Exception as e:
+                    logger.debug(f"CoinGecko fallback error for {clean_sym}: {e}")
 
     @classmethod
     async def fetch_live_quotes(cls, asset_ids: Optional[List[str]] = None) -> None:
@@ -622,33 +676,39 @@ class CryptoIntelligenceService:
         candles: List[Dict[str, Any]] = []
 
         if is_crypto and binance_symbol:
-            try:
-                clean_binance_sym = binance_symbol.split(":")[-1]
-                async with httpx.AsyncClient(timeout=3.5) as client:
-                    res = await client.get(
-                        f"https://api.binance.com/api/v3/klines?symbol={clean_binance_sym}&interval={interval}&limit={limit}"
-                    )
-                    if res.status_code == 200:
-                        klines = res.json()
-                        for k in klines:
-                            dt_iso = datetime.utcfromtimestamp(k[0] / 1000.0).isoformat() + "Z"
-                            open_p = float(k[1])
-                            high_p = float(k[2])
-                            low_p = float(k[3])
-                            close_p = float(k[4])
-                            vol = float(k[5])
-                            candles.append({
-                                "timestamp": dt_iso,
-                                "time": int(k[0] / 1000),
-                                "open": round(open_p, 4 if open_p < 1.0 else 2),
-                                "high": round(high_p, 4 if high_p < 1.0 else 2),
-                                "low": round(low_p, 4 if low_p < 1.0 else 2),
-                                "close": round(close_p, 4 if close_p < 1.0 else 2),
-                                "price": round(close_p, 4 if close_p < 1.0 else 2),
-                                "volume": round(vol, 2),
-                            })
-            except Exception as e:
-                logger.debug(f"Binance klines fetch error for {binance_symbol}: {e}")
+            clean_binance_sym = binance_symbol.split(":")[-1]
+            endpoints = [
+                f"https://api.binance.com/api/v3/klines?symbol={clean_binance_sym}&interval={interval}&limit={limit}",
+                f"https://api.binance.us/api/v3/klines?symbol={clean_binance_sym}&interval={interval}&limit={limit}",
+            ]
+            for u in endpoints:
+                try:
+                    async with httpx.AsyncClient(timeout=3.5) as client:
+                        res = await client.get(u)
+                        if res.status_code == 200:
+                            klines = res.json()
+                            if klines and len(klines) > 0:
+                                for k in klines:
+                                    dt_iso = datetime.utcfromtimestamp(k[0] / 1000.0).isoformat() + "Z"
+                                    open_p = float(k[1])
+                                    high_p = float(k[2])
+                                    low_p = float(k[3])
+                                    close_p = float(k[4])
+                                    vol = float(k[5])
+                                    candles.append({
+                                        "timestamp": dt_iso,
+                                        "time": int(k[0] / 1000),
+                                        "open": round(open_p, 4 if open_p < 1.0 else 2),
+                                        "high": round(high_p, 4 if high_p < 1.0 else 2),
+                                        "low": round(low_p, 4 if low_p < 1.0 else 2),
+                                        "close": round(close_p, 4 if close_p < 1.0 else 2),
+                                        "price": round(close_p, 4 if close_p < 1.0 else 2),
+                                        "volume": round(vol, 2),
+                                    })
+                                if candles:
+                                    break
+                except Exception as e:
+                    logger.debug(f"Klines fetch error from {u}: {e}")
 
         # If stock or forex or network fallback, synthesize realistic OHLC around current live quote
         if not candles:
