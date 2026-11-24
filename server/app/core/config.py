@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Allowed CORS Origins (comma-separated string or parsed list)
     ALLOWED_ORIGINS: str = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8000"
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8000,https://pesaflip254.onrender.com,https://mutex-ledger.onrender.com"
     )
 
     # Fallback to in-memory mocks if Postgres/Redis cannot connect

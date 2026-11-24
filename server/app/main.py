@@ -121,14 +121,25 @@ app = FastAPI(
 
 # Cross-Origin Resource Sharing (CORS) Configuration
 raw_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
-cors_origins = raw_origins if raw_origins else ["http://localhost:5173", "http://localhost:3000"]
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://pesaflip254.onrender.com",
+    "https://mutex-ledger.onrender.com",
+]
+cors_origins = list(set(raw_origins + default_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
 
 # Include API Routers
