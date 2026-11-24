@@ -30,6 +30,7 @@ class CryptoIntelligenceService:
     _QUOTE_CACHE_TTL: int = 15  # 15 seconds TTL
     _BINANCE_ALL_TICKERS: Dict[str, Tuple[float, float, float]] = {}  # symbol -> (price, change_24h, timestamp)
     _BINANCE_CACHE_TTL: int = 10  # 10 seconds TTL
+    _BINANCE_LAST_BULK_FETCH: float = 0.0
     _FOREX_RATES_CACHE: Dict[str, float] = {}
     _FOREX_CACHE_TIME: float = 0.0
     _COMMODITY_LIVE_CACHE: Dict[str, Tuple[float, float, float]] = {} # symbol -> (price, change_24h, timestamp)
@@ -351,8 +352,32 @@ class CryptoIntelligenceService:
 
     @classmethod
     async def _update_binance_crypto_tickers(cls, client: httpx.AsyncClient, symbols: List[str]):
-        """Fetches live quotes for requested crypto symbols with automatic cloud-friendly failover (Binance.com -> Binance.US -> CoinGecko)."""
+        """Fetches live quotes for requested crypto symbols with bulk cache and automatic synthetic cross calculation."""
         now = time.time()
+
+        # 1. Bulk refresh all active Binance/Binance.US tickers every 60 seconds in a single batch request
+        if now - cls._BINANCE_LAST_BULK_FETCH > 60:
+            urls = [
+                "https://api.binance.com/api/v3/ticker/24hr",
+                "https://api.binance.us/api/v3/ticker/24hr",
+            ]
+            for u in urls:
+                try:
+                    res = await client.get(u, timeout=3.5)
+                    if res.status_code == 200:
+                        data = res.json()
+                        for item in data:
+                            s = item.get("symbol")
+                            if s:
+                                p = float(item.get("lastPrice", 0))
+                                ch = float(item.get("priceChangePercent", 0))
+                                if p > 0:
+                                    cls._BINANCE_ALL_TICKERS[s] = (p, round(ch, 2), now)
+                        cls._BINANCE_LAST_BULK_FETCH = now
+                        break
+                except Exception as e:
+                    logger.debug(f"Bulk ticker fetch error from {u}: {e}")
+
         coingecko_map = {
             "BTCUSDT": "bitcoin",
             "ETHUSDT": "ethereum",
@@ -387,7 +412,7 @@ class CryptoIntelligenceService:
 
         for clean_sym in needed_symbols:
             fetched = False
-            # 1. Try Binance Global, then Binance.US (works on cloud servers like Render)
+            # 2. Try single ticker endpoints if not already in bulk cache
             endpoints = [
                 f"https://api.binance.com/api/v3/ticker/24hr?symbol={clean_sym}",
                 f"https://api.binance.us/api/v3/ticker/24hr?symbol={clean_sym}",
@@ -406,7 +431,7 @@ class CryptoIntelligenceService:
                 except Exception:
                     pass
 
-            # 2. CoinGecko public fallback if Binance is geo-restricted or pair is blocked
+            # 3. CoinGecko public fallback if Binance is geo-restricted or pair is blocked
             if not fetched and clean_sym in coingecko_map:
                 cg_id = coingecko_map[clean_sym]
                 try:
@@ -570,6 +595,31 @@ class CryptoIntelligenceService:
                     if p > 0:
                         a["price"] = p
                         a["change_24h"] = ch
+                else:
+                    # Synthetic cross calculation: e.g. WLD/BTC, WLD/TRY, WLD/EUR, WLD/USDC, WLD/IDR
+                    display_sym = a.get("symbol", "")
+                    if "/" in display_sym:
+                        base_coin, quote_coin = display_sym.split("/")[0], display_sym.split("/")[1]
+                        base_usdt_sym = f"{base_coin}USDT"
+                        quote_usdt_sym = f"{quote_coin}USDT"
+
+                        base_price = cls._BINANCE_ALL_TICKERS.get(base_usdt_sym, (0, 0, 0))[0]
+                        if base_price > 0:
+                            if quote_coin in ("USDC", "FDUSD", "USD"):
+                                a["price"] = base_price
+                                a["change_24h"] = cls._BINANCE_ALL_TICKERS.get(base_usdt_sym, (0, 0, 0))[1]
+                            elif quote_usdt_sym in cls._BINANCE_ALL_TICKERS:
+                                q_price = cls._BINANCE_ALL_TICKERS[quote_usdt_sym][0]
+                                if q_price > 0:
+                                    cross_val = base_price / q_price
+                                    a["price"] = round(cross_val, 8 if cross_val < 0.001 else 4)
+                                    a["change_24h"] = cls._BINANCE_ALL_TICKERS.get(base_usdt_sym, (0, 0, 0))[1]
+                            elif rates and quote_coin in rates:
+                                fx_rate = rates[quote_coin]
+                                if fx_rate > 0:
+                                    fiat_val = base_price * fx_rate
+                                    a["price"] = round(fiat_val, 2 if fiat_val >= 1.0 else 4)
+                                    a["change_24h"] = cls._BINANCE_ALL_TICKERS.get(base_usdt_sym, (0, 0, 0))[1]
 
     @classmethod
     async def get_global_market_overview(cls) -> Dict[str, Any]:
